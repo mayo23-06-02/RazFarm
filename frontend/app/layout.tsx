@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Inter, IBM_Plex_Mono } from "next/font/google";
+import { ToastProvider } from "@/components/ui/Toast";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -35,7 +36,9 @@ export default function RootLayout({
       lang="en"
       className={`${bricolage.variable} ${inter.variable} ${plexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans bg-paper-50 text-ink-700">{children}</body>
+      <body className="min-h-full flex flex-col font-sans bg-paper-50 text-ink-700">
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }
