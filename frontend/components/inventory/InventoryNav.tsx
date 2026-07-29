@@ -8,6 +8,8 @@ const ITEMS = [
   { href: "/inventory/items", label: "Stock items" },
   { href: "/inventory/movements", label: "Stock ledger" },
   { href: "/inventory/suppliers", label: "Suppliers" },
+  { href: "/inventory/purchase-orders", label: "Purchase orders" },
+  { href: "/inventory/bills", label: "Bills" },
 ];
 
 export function InventoryNav() {
