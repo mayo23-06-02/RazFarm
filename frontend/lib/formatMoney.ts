@@ -8,6 +8,13 @@ export function formatMoney(value: number, opts: { withPrefix?: boolean } = {}) 
   return withPrefix ? `${sign}E ${formatted}` : `${sign}${formatted}`;
 }
 
+export function formatMoneyCompact(value: number) {
+  return new Intl.NumberFormat("en-SZ", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
 export function formatTonnes(value: number, decimals = 1) {
   return `${new Intl.NumberFormat("en-SZ", {
     minimumFractionDigits: decimals,
