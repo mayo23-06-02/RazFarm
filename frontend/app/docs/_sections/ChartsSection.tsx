@@ -7,7 +7,7 @@ import { BarCompare } from "@/components/charts/BarCompare";
 import { StackedBars } from "@/components/charts/StackedBars";
 import { DonutSplit } from "@/components/charts/DonutSplit";
 import { SucroseLine } from "@/components/charts/SucroseLine";
-import { formatMoney } from "@/lib/formatMoney";
+import { formatMoney, formatMoneyCompact } from "@/lib/formatMoney";
 
 const CASH_TREND = [
   { month: "Feb", cash: 612000 },
@@ -53,7 +53,14 @@ export function ChartsSection() {
     <Section id="charts" title="Charts" description="Recharts wrappers sharing one theme — no 3D, no legends for ≤2 series, always ResponsiveContainer.">
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Cash position" height={240}>
-          <AreaTrend data={CASH_TREND} xKey="month" yKey="cash" height={240} valueFormatter={(v) => `E ${formatMoney(v)}`} />
+          <AreaTrend
+            data={CASH_TREND}
+            xKey="month"
+            yKey="cash"
+            height={240}
+            valueFormatter={(v) => `E ${formatMoney(v)}`}
+            tickFormatter={(v) => `E ${formatMoneyCompact(v)}`}
+          />
         </ChartCard>
         <ChartCard title="Deliveries by field" height={240}>
           <BarCompare data={DAILY} xKey="field" yKey="tonnes" height={240} />

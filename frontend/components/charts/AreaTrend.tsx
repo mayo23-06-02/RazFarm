@@ -8,10 +8,16 @@ export interface AreaTrendProps {
   xKey: string;
   yKey: string;
   height?: number;
+  /** Verbose formatter used in the tooltip, e.g. "E 612,000.00". */
   valueFormatter?: (v: number) => string;
+  /** Compact formatter used for Y-axis ticks, e.g. "E 612k". Falls back to a plain compact number. */
+  tickFormatter?: (v: number) => string;
 }
 
-export function AreaTrend({ data, xKey, yKey, height = 260, valueFormatter }: AreaTrendProps) {
+const defaultTickFormatter = (v: number) =>
+  new Intl.NumberFormat("en-SZ", { notation: "compact", maximumFractionDigits: 1 }).format(v);
+
+export function AreaTrend({ data, xKey, yKey, height = 260, valueFormatter, tickFormatter }: AreaTrendProps) {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -23,7 +29,7 @@ export function AreaTrend({ data, xKey, yKey, height = 260, valueFormatter }: Ar
         </defs>
         <CartesianGrid {...chart.grid} />
         <XAxis dataKey={xKey} {...chart.axis} tickMargin={8} interval="preserveStartEnd" />
-        <YAxis {...chart.axis} tickMargin={4} width={44} tickFormatter={valueFormatter} />
+        <YAxis {...chart.axis} tickMargin={4} width={60} tickFormatter={tickFormatter ?? defaultTickFormatter} />
         <Tooltip
           {...chart.tooltip}
           formatter={(v) => (valueFormatter ? valueFormatter(Number(v)) : v)}
