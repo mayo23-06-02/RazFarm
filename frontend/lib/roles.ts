@@ -13,3 +13,9 @@ export const CHAIRMAN_ROLES: MemberRole[] = ["chairman"];
 export const FINANCE_VIEWER_ROLES: MemberRole[] = ["chairman", "treasurer", "accountant"];
 export const ACCOUNTANT_ROLES: MemberRole[] = ["accountant"];
 export const JOURNAL_POSTER_ROLES: MemberRole[] = ["chairman", "treasurer"];
+
+// Module F.1 (supabase/migrations/0009_inventory_core.sql §3). Supervisor is
+// the field-operations role (design.md §12.2: "records ... inventory
+// issues"), so it manages day-to-day stock alongside the accountant.
+export const INVENTORY_VIEWER_ROLES: MemberRole[] = ["chairman", "treasurer", "accountant", "supervisor"];
+export const INVENTORY_MANAGER_ROLES: MemberRole[] = ["supervisor", "accountant"];

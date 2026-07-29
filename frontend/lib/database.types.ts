@@ -32,6 +32,10 @@ export type MemberAccountEntryKind = "payout" | "advance" | "contribution" | "ad
 // Module D: Petty cash monitoring (supabase/migrations/0008_petty_cash.sql)
 export type PettyCashTxType = "expense" | "replenishment";
 
+// Module F.1: Inventory core (supabase/migrations/0009_inventory_core.sql)
+export type InventoryItemCategory = "fertilizer" | "chemical" | "seed_cane" | "other";
+export type StockMovementType = "receipt" | "issue" | "adjustment";
+
 export interface Database {
   public: {
     Tables: {
@@ -793,6 +797,94 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["petty_cash_transactions"]["Insert"]>;
         Relationships: [];
       };
+      suppliers: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          contact_name: string | null;
+          phone: string | null;
+          email: string | null;
+          address: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          contact_name?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          address?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["suppliers"]["Insert"]>;
+        Relationships: [];
+      };
+      inventory_items: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          sku: string;
+          name: string;
+          category: InventoryItemCategory;
+          unit: string;
+          reorder_level: number;
+          quantity_on_hand: number;
+          average_cost: number;
+          default_supplier_id: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          sku: string;
+          name: string;
+          category?: InventoryItemCategory;
+          unit?: string;
+          reorder_level?: number;
+          quantity_on_hand?: number;
+          average_cost?: number;
+          default_supplier_id?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["inventory_items"]["Insert"]>;
+        Relationships: [];
+      };
+      stock_movements: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          item_id: string;
+          movement_type: StockMovementType;
+          quantity_delta: number;
+          unit_cost: number;
+          reference: string | null;
+          journal_entry_id: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          item_id: string;
+          movement_type: StockMovementType;
+          quantity_delta: number;
+          unit_cost?: number;
+          reference?: string | null;
+          journal_entry_id?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["stock_movements"]["Insert"]>;
+        Relationships: [];
+      };
       audit_log: {
         Row: {
           id: number;
@@ -932,6 +1024,18 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["petty_cash_transactions"]["Row"];
       };
+      record_stock_receipt: {
+        Args: { p_item_id: string; p_quantity: number; p_unit_cost: number; p_credit_account_id: string; p_reference: string | null };
+        Returns: Database["public"]["Tables"]["stock_movements"]["Row"];
+      };
+      record_stock_issue: {
+        Args: { p_item_id: string; p_quantity: number; p_expense_account_id: string; p_reference: string | null };
+        Returns: Database["public"]["Tables"]["stock_movements"]["Row"];
+      };
+      record_stock_adjustment: {
+        Args: { p_item_id: string; p_quantity_delta: number; p_reason: string | null };
+        Returns: Database["public"]["Tables"]["stock_movements"]["Row"];
+      };
     };
     Enums: {
       member_role: MemberRole;
@@ -953,6 +1057,8 @@ export interface Database {
       payout_run_status: PayoutRunStatus;
       member_account_entry_kind: MemberAccountEntryKind;
       petty_cash_tx_type: PettyCashTxType;
+      inventory_item_category: InventoryItemCategory;
+      stock_movement_type: StockMovementType;
     };
   };
 }
