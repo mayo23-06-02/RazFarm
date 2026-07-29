@@ -38,10 +38,11 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Finance",
-    items: [
-      { icon: <TbCash />, label: "Finances", href: "/finance/accounts" },
-      { icon: <TbPackage />, label: "Inventory" },
-    ],
+    items: [{ icon: <TbCash />, label: "Finances", href: "/finance/accounts" }],
+  },
+  {
+    label: "Inventory",
+    items: [{ icon: <TbPackage />, label: "Inventory", href: "/inventory/items" }],
   },
   {
     label: "Association",
