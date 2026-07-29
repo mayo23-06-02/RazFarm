@@ -22,6 +22,9 @@ export type DocumentCategory = "constitution" | "agreements" | "policies" | "tit
 export type AccountType = "asset" | "liability" | "equity" | "income" | "expense";
 export type JournalEntryStatus = "draft" | "posted";
 
+// Module D.1: Accounts Receivable (supabase/migrations/0005_accounts_receivable.sql)
+export type InvoiceStatus = "draft" | "sent" | "partial" | "paid" | "void";
+
 export interface Database {
   public: {
     Tables: {
@@ -461,6 +464,146 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["journal_lines"]["Insert"]>;
         Relationships: [];
       };
+      customers: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          email: string | null;
+          phone: string | null;
+          address: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          email?: string | null;
+          phone?: string | null;
+          address?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["customers"]["Insert"]>;
+        Relationships: [];
+      };
+      invoices: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          customer_id: string;
+          invoice_no: string;
+          issue_date: string;
+          due_date: string;
+          status: InvoiceStatus;
+          vat_rate: number;
+          notes: string | null;
+          journal_entry_id: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          customer_id: string;
+          invoice_no: string;
+          issue_date?: string;
+          due_date?: string;
+          status?: InvoiceStatus;
+          vat_rate?: number;
+          notes?: string | null;
+          journal_entry_id?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["invoices"]["Insert"]>;
+        Relationships: [];
+      };
+      invoice_lines: {
+        Row: {
+          id: string;
+          invoice_id: string;
+          position: number;
+          description: string;
+          quantity: number;
+          unit_price: number;
+          account_id: string;
+        };
+        Insert: {
+          id?: string;
+          invoice_id: string;
+          position?: number;
+          description: string;
+          quantity?: number;
+          unit_price?: number;
+          account_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["invoice_lines"]["Insert"]>;
+        Relationships: [];
+      };
+      invoice_payments: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          invoice_id: string;
+          amount: number;
+          paid_at: string;
+          method: string | null;
+          reference: string | null;
+          deposit_account_id: string;
+          journal_entry_id: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          invoice_id: string;
+          amount: number;
+          paid_at?: string;
+          method?: string | null;
+          reference?: string | null;
+          deposit_account_id: string;
+          journal_entry_id?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["invoice_payments"]["Insert"]>;
+        Relationships: [];
+      };
+      credit_notes: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          invoice_id: string;
+          credit_no: string;
+          amount: number;
+          reason: string | null;
+          revenue_account_id: string;
+          issued_at: string;
+          journal_entry_id: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          invoice_id: string;
+          credit_no: string;
+          amount: number;
+          reason?: string | null;
+          revenue_account_id: string;
+          issued_at?: string;
+          journal_entry_id?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["credit_notes"]["Insert"]>;
+        Relationships: [];
+      };
       audit_log: {
         Row: {
           id: number;
@@ -520,6 +663,25 @@ export interface Database {
         Args: { p_tenant_id: string };
         Returns: undefined;
       };
+      issue_invoice: {
+        Args: { p_invoice_id: string };
+        Returns: Database["public"]["Tables"]["invoices"]["Row"];
+      };
+      record_invoice_payment: {
+        Args: {
+          p_invoice_id: string;
+          p_amount: number;
+          p_paid_at: string;
+          p_method: string | null;
+          p_reference: string | null;
+          p_deposit_account_id: string;
+        };
+        Returns: Database["public"]["Tables"]["invoice_payments"]["Row"];
+      };
+      issue_credit_note: {
+        Args: { p_invoice_id: string; p_amount: number; p_reason: string | null; p_revenue_account_id: string };
+        Returns: Database["public"]["Tables"]["credit_notes"]["Row"];
+      };
     };
     Enums: {
       member_role: MemberRole;
@@ -537,6 +699,7 @@ export interface Database {
       document_category: DocumentCategory;
       account_type: AccountType;
       journal_entry_status: JournalEntryStatus;
+      invoice_status: InvoiceStatus;
     };
   };
 }
