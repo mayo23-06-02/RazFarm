@@ -54,9 +54,9 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   const onSubmit = async (values: AcceptInviteValues) => {
     setSubmitError(null);
     try {
-      await acceptInvite({ token, ...values });
-      addToast({ variant: "field", message: "Account activated. Taking you to your dashboard." });
-      router.push("/dashboard");
+      const result = await acceptInvite({ token, ...values, phone: invite?.phone ?? null, email: invite?.email ?? null });
+      addToast({ variant: "field", message: "Account created. Verify to continue." });
+      router.push(`/verify?flow=invite&token=${encodeURIComponent(token)}&identifier=${encodeURIComponent(result.identifier)}`);
     } catch (err) {
       setSubmitError(
         err instanceof AuthApiError ? err.message : "Couldn't activate your account. Try again."

@@ -1,10 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { isEmail, normalizePhone } from "@/lib/validators/auth";
-
-const LATENCY_MS = 800;
-function delay<T>(value: T): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), LATENCY_MS));
-}
+import { slugify } from "@/lib/slug";
+import type { MillName } from "@/lib/database.types";
 
 export class AuthApiError extends Error {
   constructor(message: string) {
@@ -91,6 +88,43 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
   return { userId: data.user?.id ?? "", phone };
 }
 
+// Registration collects the association name up front, but the tenant can
+// only be created once there's a verified, authenticated session — so this
+// runs after OTP verification succeeds (see the "signup" flow in
+// app/(auth)/verify/page.tsx), reading the name back from user metadata.
+export interface CompleteRegistrationResult {
+  tenantId: string;
+}
+
+export async function completeRegistration(): Promise<CompleteRegistrationResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const associationName = (user?.user_metadata?.association_name as string | undefined)?.trim();
+
+  if (!associationName) {
+    throw new AuthApiError("We couldn't find your association name. Please contact support.");
+  }
+
+  const baseSlug = slugify(associationName) || "association";
+  let lastError: string | null = null;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const slug = attempt === 0 ? baseSlug : `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`;
+    const { data, error } = await supabase.rpc("register_association", {
+      p_name: associationName,
+      p_slug: slug,
+      p_mill: "other" as MillName,
+    });
+    if (!error) return { tenantId: data as unknown as string };
+    lastError = error.message;
+    if (!/duplicate|unique/i.test(error.message)) break;
+  }
+
+  throw new AuthApiError(friendlyError(lastError ?? "Couldn't set up your association. Try again."));
+}
+
 export interface RequestResetInput {
   identifier: string;
 }
@@ -110,7 +144,7 @@ export async function requestReset({
 export interface VerifyOtpInput {
   identifier: string;
   code: string;
-  flow: "reset" | "signup";
+  flow: "reset" | "signup" | "invite";
 }
 
 export async function verifyOtp({ identifier, code }: VerifyOtpInput): Promise<{ verified: true }> {
@@ -124,7 +158,7 @@ export async function verifyOtp({ identifier, code }: VerifyOtpInput): Promise<{
 
 export interface ResendOtpInput {
   identifier: string;
-  flow: "reset" | "signup";
+  flow: "reset" | "signup" | "invite";
 }
 
 export async function resendOtp({ identifier, flow }: ResendOtpInput): Promise<{ sent: true }> {
@@ -153,23 +187,33 @@ export async function resetPassword({ password }: ResetPasswordInput): Promise<{
   return { reset: true };
 }
 
-// TODO: invites depend on a tenant/invite table that doesn't exist in the
-// database yet, so these two stay mocked. Once an `invites` table + RLS
-// policy exist, replace getInvite with a real lookup and have acceptInvite
-// call supabase.auth.signUp (or an admin.inviteUserByEmail-issued link,
-// verified server-side) using the invite's stored contact + role.
 export interface InviteDetails {
   associationName: string;
   role: string;
   invitedName?: string;
+  phone: string | null;
+  email: string | null;
 }
 
 export async function getInvite(token: string): Promise<InviteDetails> {
-  await delay(null);
-  void token;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("preview_invite", { p_token: token });
+  if (error) throw new AuthApiError(friendlyError(error.message));
+
+  const result = data as unknown as
+    | { valid: true; tenant_name: string; name: string; role: string; phone: string | null; email: string | null }
+    | { valid: false; reason: string; tenant_name?: string };
+
+  if (!result.valid) {
+    throw new AuthApiError("This invite link is invalid or has expired.");
+  }
+
   return {
-    associationName: "Lubombo Grower's Co-operative",
-    role: "Supervisor",
+    associationName: result.tenant_name,
+    role: result.role,
+    invitedName: result.name,
+    phone: result.phone,
+    email: result.email,
   };
 }
 
@@ -177,10 +221,38 @@ export interface AcceptInviteInput {
   token: string;
   fullName: string;
   password: string;
+  phone: string | null;
+  email: string | null;
 }
 
-export async function acceptInvite(input: AcceptInviteInput): Promise<{ userId: string }> {
-  await delay(null);
-  void input;
-  return { userId: "mock-user-invited" };
+export interface AcceptInviteResult {
+  identifier: string;
+}
+
+// Mirrors register(): signs up using the invite's own contact info (the
+// visitor doesn't type it themselves — it's what the invite was sent to),
+// then completeInviteAcceptance() links the membership after OTP verification.
+export async function acceptInvite(input: AcceptInviteInput): Promise<AcceptInviteResult> {
+  const supabase = createClient();
+
+  const { error } = input.email
+    ? await supabase.auth.signUp({
+        email: input.email,
+        password: input.password,
+        options: { data: { full_name: input.fullName } },
+      })
+    : await supabase.auth.signUp({
+        phone: normalizePhone(input.phone ?? ""),
+        password: input.password,
+        options: { data: { full_name: input.fullName } },
+      });
+
+  if (error) throw new AuthApiError(friendlyError(error.message));
+  return { identifier: input.email ?? normalizePhone(input.phone ?? "") };
+}
+
+export async function completeInviteAcceptance(token: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("accept_invite", { p_token: token });
+  if (error) throw new AuthApiError(friendlyError(error.message));
 }

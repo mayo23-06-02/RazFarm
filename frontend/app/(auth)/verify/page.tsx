@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { FieldError } from "@/components/ui/Input";
 import { OtpInput } from "@/components/ui/OTPInput";
 import { useToast } from "@/components/ui/Toast";
-import { verifyOtp, resendOtp, AuthApiError } from "@/lib/auth-api";
+import { verifyOtp, resendOtp, completeRegistration, completeInviteAcceptance, AuthApiError } from "@/lib/auth-api";
 
 const RESEND_SECONDS = 60;
 
@@ -23,8 +23,10 @@ function VerifyForm() {
   const searchParams = useSearchParams();
   const { addToast } = useToast();
 
-  const flow = searchParams.get("flow") === "reset" ? "reset" : "signup";
+  const flowParam = searchParams.get("flow");
+  const flow = flowParam === "reset" ? "reset" : flowParam === "invite" ? "invite" : "signup";
   const identifier = searchParams.get("identifier") ?? "";
+  const inviteToken = searchParams.get("token") ?? "";
 
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +45,14 @@ function VerifyForm() {
     setVerifying(true);
     try {
       await verifyOtp({ identifier, code: value, flow });
+
       if (flow === "signup") {
+        await completeRegistration();
         addToast({ variant: "field", message: "Phone verified. Welcome to Cane & Ledger." });
+        router.push("/dashboard");
+      } else if (flow === "invite") {
+        await completeInviteAcceptance(inviteToken);
+        addToast({ variant: "field", message: "Account activated. Welcome to Cane & Ledger." });
         router.push("/dashboard");
       } else {
         addToast({ variant: "field", message: "Code verified. Choose a new password." });
@@ -131,7 +139,10 @@ function VerifyForm() {
 
       <p className="mt-6 text-center text-sm text-ink-500">
         Wrong number?{" "}
-        <Link href={flow === "signup" ? "/register" : "/forgot-password"} className="font-medium text-brand-600 hover:text-brand-700">
+        <Link
+          href={flow === "signup" ? "/register" : flow === "invite" ? "/login" : "/forgot-password"}
+          className="font-medium text-brand-600 hover:text-brand-700"
+        >
           Start over
         </Link>
       </p>

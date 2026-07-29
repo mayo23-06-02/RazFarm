@@ -1,21 +1,32 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import {
   TbBuildingFactory2,
+  TbCalendarEvent,
   TbCash,
+  TbFolder,
   TbLayoutDashboard,
   TbPackage,
   TbPlant2,
   TbSettings,
+  TbSpeakerphone,
   TbTruck,
   TbUsers,
 } from "react-icons/tb";
 import { NavItem } from "./NavItem";
-import { TenantSwitcher } from "./TenantSwitcher";
+import { TenantSwitcher, type Tenant } from "./TenantSwitcher";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
-const NAV_GROUPS = [
+interface NavGroup {
+  label: string;
+  items: { icon: React.ReactNode; label: string; href?: string; badge?: number; active?: boolean }[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
   {
     label: "General",
-    items: [{ icon: <TbLayoutDashboard />, label: "Dashboard", active: true }],
+    items: [{ icon: <TbLayoutDashboard />, label: "Dashboard", href: "/dashboard" }],
   },
   {
     label: "Production",
@@ -29,8 +40,16 @@ const NAV_GROUPS = [
     label: "Finance",
     items: [
       { icon: <TbCash />, label: "Finances" },
-      { icon: <TbUsers />, label: "Members" },
       { icon: <TbPackage />, label: "Inventory" },
+    ],
+  },
+  {
+    label: "Association",
+    items: [
+      { icon: <TbUsers />, label: "Members", href: "/members" },
+      { icon: <TbCalendarEvent />, label: "Meetings", href: "/meetings" },
+      { icon: <TbSpeakerphone />, label: "Announcements", href: "/announcements" },
+      { icon: <TbFolder />, label: "Documents", href: "/documents" },
     ],
   },
   {
@@ -39,9 +58,22 @@ const NAV_GROUPS = [
   },
 ];
 
-export function Sidebar({ className }: { className?: string }) {
+const DEMO_TENANTS: Tenant[] = [
+  { name: "Ka-Lavumisa Growers", role: "Chairman" },
+  { name: "Big Bend Co-op", role: "Accountant" },
+];
+
+export interface SidebarProps {
+  className?: string;
+  tenants?: Tenant[];
+  activeTenant?: Tenant;
+}
+
+export function Sidebar({ className, tenants = DEMO_TENANTS, activeTenant = DEMO_TENANTS[0] }: SidebarProps) {
+  const pathname = usePathname();
+
   return (
-    <aside className={`flex h-full w-[248px] flex-col border-r border-paper-200 bg-paper-0 ${className ?? ""}`}>
+    <aside className={`flex h-full w-[248px] shrink-0 flex-col border-r border-paper-200 bg-paper-0 ${className ?? ""}`}>
       <div className="flex items-center gap-2 px-5 py-5">
         <span className="flex size-8 items-center justify-center rounded-ctrl bg-brand-500 font-display text-sm font-bold text-white">
           C
@@ -52,20 +84,15 @@ export function Sidebar({ className }: { className?: string }) {
         {NAV_GROUPS.map((group) => (
           <div key={group.label} className="space-y-1">
             <SectionHeading className="mb-2 px-3">{group.label}</SectionHeading>
-            {group.items.map((item) => (
-              <NavItem key={item.label} {...item} />
-            ))}
+            {group.items.map((item) => {
+              const active = item.href ? pathname === item.href || pathname.startsWith(`${item.href}/`) : item.active;
+              return <NavItem key={item.label} {...item} active={active} />;
+            })}
           </div>
         ))}
       </nav>
       <div className="border-t border-paper-200 p-3">
-        <TenantSwitcher
-          tenants={[
-            { name: "Ka-Lavumisa Growers", role: "Chairman" },
-            { name: "Big Bend Co-op", role: "Accountant" },
-          ]}
-          active={{ name: "Ka-Lavumisa Growers", role: "Chairman" }}
-        />
+        <TenantSwitcher tenants={tenants} active={activeTenant} />
       </div>
     </aside>
   );
