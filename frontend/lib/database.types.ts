@@ -36,6 +36,10 @@ export type PettyCashTxType = "expense" | "replenishment";
 export type InventoryItemCategory = "fertilizer" | "chemical" | "seed_cane" | "other";
 export type StockMovementType = "receipt" | "issue" | "adjustment";
 
+// Module F.2: Purchase orders & goods-received notes (supabase/migrations/0010_purchase_orders.sql)
+export type PurchaseOrderStatus = "draft" | "issued" | "received" | "billed" | "cancelled";
+export type SupplierBillStatus = "open" | "paid";
+
 export interface Database {
   public: {
     Tables: {
@@ -885,6 +889,140 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["stock_movements"]["Insert"]>;
         Relationships: [];
       };
+      purchase_orders: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          supplier_id: string;
+          po_no: string;
+          status: PurchaseOrderStatus;
+          order_date: string;
+          expected_date: string | null;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          supplier_id: string;
+          po_no: string;
+          status?: PurchaseOrderStatus;
+          order_date?: string;
+          expected_date?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["purchase_orders"]["Insert"]>;
+        Relationships: [];
+      };
+      purchase_order_lines: {
+        Row: {
+          id: string;
+          purchase_order_id: string;
+          position: number;
+          item_id: string;
+          quantity_ordered: number;
+          quantity_received: number;
+          unit_cost: number;
+        };
+        Insert: {
+          id?: string;
+          purchase_order_id: string;
+          position?: number;
+          item_id: string;
+          quantity_ordered: number;
+          quantity_received?: number;
+          unit_cost?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["purchase_order_lines"]["Insert"]>;
+        Relationships: [];
+      };
+      goods_received_notes: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          purchase_order_id: string;
+          grn_no: string;
+          received_date: string;
+          reference: string | null;
+          supplier_bill_id: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          purchase_order_id: string;
+          grn_no: string;
+          received_date?: string;
+          reference?: string | null;
+          supplier_bill_id?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["goods_received_notes"]["Insert"]>;
+        Relationships: [];
+      };
+      goods_received_lines: {
+        Row: {
+          id: string;
+          goods_received_note_id: string;
+          purchase_order_line_id: string;
+          item_id: string;
+          quantity_received: number;
+          unit_cost: number;
+          stock_movement_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          goods_received_note_id: string;
+          purchase_order_line_id: string;
+          item_id: string;
+          quantity_received: number;
+          unit_cost?: number;
+          stock_movement_id?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["goods_received_lines"]["Insert"]>;
+        Relationships: [];
+      };
+      supplier_bills: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          supplier_id: string;
+          goods_received_note_id: string | null;
+          bill_no: string;
+          bill_date: string;
+          amount: number;
+          status: SupplierBillStatus;
+          journal_entry_id: string | null;
+          paid_journal_entry_id: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          supplier_id: string;
+          goods_received_note_id?: string | null;
+          bill_no: string;
+          bill_date?: string;
+          amount: number;
+          status?: SupplierBillStatus;
+          journal_entry_id?: string | null;
+          paid_journal_entry_id?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["supplier_bills"]["Insert"]>;
+        Relationships: [];
+      };
       audit_log: {
         Row: {
           id: number;
@@ -1036,6 +1174,18 @@ export interface Database {
         Args: { p_item_id: string; p_quantity_delta: number; p_reason: string | null };
         Returns: Database["public"]["Tables"]["stock_movements"]["Row"];
       };
+      issue_purchase_order: {
+        Args: { p_po_id: string };
+        Returns: Database["public"]["Tables"]["purchase_orders"]["Row"];
+      };
+      receive_purchase_order_lines: {
+        Args: { p_po_id: string; p_received_date: string; p_lines: Record<string, unknown>[]; p_reference: string | null };
+        Returns: Database["public"]["Tables"]["goods_received_notes"]["Row"];
+      };
+      mark_supplier_bill_paid: {
+        Args: { p_bill_id: string; p_payment_date: string; p_payment_account_id: string };
+        Returns: Database["public"]["Tables"]["supplier_bills"]["Row"];
+      };
     };
     Enums: {
       member_role: MemberRole;
@@ -1059,6 +1209,8 @@ export interface Database {
       petty_cash_tx_type: PettyCashTxType;
       inventory_item_category: InventoryItemCategory;
       stock_movement_type: StockMovementType;
+      purchase_order_status: PurchaseOrderStatus;
+      supplier_bill_status: SupplierBillStatus;
     };
   };
 }
