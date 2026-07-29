@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TbEdit, TbUserCheck } from "react-icons/tb";
+import { TbDownload, TbEdit, TbUserCheck } from "react-icons/tb";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Tabs } from "@/components/ui/Tabs";
 import { DescriptionList } from "@/components/ui/DescriptionList";
@@ -14,14 +14,23 @@ import { useToast } from "@/components/ui/Toast";
 import { MemberFormDrawer } from "./MemberFormDrawer";
 import { createClient } from "@/lib/supabase/client";
 import { formatDate, formatDateTime } from "@/lib/formatDate";
-import type { Database, AttendanceStatus, InviteStatus, MemberStatus } from "@/lib/database.types";
+import { toCsv } from "@/lib/csv";
+import type { Database, AttendanceStatus, InviteStatus, MemberAccountEntryKind, MemberStatus } from "@/lib/database.types";
 
 type MemberRow = Database["public"]["Tables"]["members"]["Row"];
+type MemberAccountEntryRow = Database["public"]["Tables"]["member_account_entries"]["Row"];
 
 const STATUS_BADGE: Record<MemberStatus, BadgeVariant> = {
   active: "success",
   suspended: "warning",
   exited: "danger",
+};
+
+const ENTRY_KIND_BADGE: Record<MemberAccountEntryKind, BadgeVariant> = {
+  payout: "success",
+  advance: "warning",
+  contribution: "info",
+  adjustment: "neutral",
 };
 
 const ATTENDANCE_BADGE: Record<AttendanceStatus, BadgeVariant> = {
@@ -65,6 +74,8 @@ export function MemberProfileSection({ tenantId, member: initialMember, canManag
   const [attendanceLoading, setAttendanceLoading] = useState(true);
   const [latestInvite, setLatestInvite] = useState<InviteRow | null>(null);
   const [accountLoading, setAccountLoading] = useState(true);
+  const [statement, setStatement] = useState<MemberAccountEntryRow[]>([]);
+  const [statementLoading, setStatementLoading] = useState(true);
 
   useEffect(() => setMember(initialMember), [initialMember]);
 
@@ -111,6 +122,42 @@ export function MemberProfileSection({ tenantId, member: initialMember, canManag
       cancelled = true;
     };
   }, [tab, member.id]);
+
+  useEffect(() => {
+    if (tab !== "statements") return;
+    let cancelled = false;
+    setStatementLoading(true);
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("member_account_entries")
+        .select("*")
+        .eq("member_id", member.id)
+        .order("entry_date", { ascending: true });
+      if (!cancelled) {
+        setStatement(data ?? []);
+        setStatementLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, member.id]);
+
+  const downloadStatement = () => {
+    const rows = [
+      ["Date", "Description", "Type", "Amount"],
+      ...statement.map((e) => [e.entry_date, e.description, e.kind, String(e.amount)]),
+    ];
+    const csv = toCsv(rows);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${member.member_no}-statement.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const refreshMember = async () => {
     const supabase = createClient();
@@ -253,7 +300,50 @@ export function MemberProfileSection({ tenantId, member: initialMember, canManag
       )}
 
       {tab === "plots" && <EmptyState title="Plots" body="Coming with the Production module." />}
-      {tab === "statements" && <EmptyState title="Statements" body="Coming with the Finance module." />}
+
+      {tab === "statements" && (
+        <div className="flex flex-col gap-3">
+          {statement.length > 0 && (
+            <Button variant="secondary" icon={<TbDownload />} size="sm" className="self-end" onClick={downloadStatement}>
+              Download statement
+            </Button>
+          )}
+          {statementLoading ? (
+            <p className="text-sm text-ink-400">Loading…</p>
+          ) : statement.length === 0 ? (
+            <EmptyState title="No statement activity yet" body="Payouts, advances and contributions will appear here once recorded." />
+          ) : (
+            <div className="overflow-hidden rounded-card border border-paper-200 bg-paper-0">
+              <div className="grid grid-cols-[100px,1fr,100px,120px,120px] gap-2 border-b border-paper-200 bg-paper-50 px-4 py-2.5 text-[12px] font-medium uppercase tracking-wide text-ink-400">
+                <span>Date</span>
+                <span>Description</span>
+                <span>Type</span>
+                <span className="text-right">Amount</span>
+                <span className="text-right">Balance</span>
+              </div>
+              {(() => {
+                let running = 0;
+                return statement.map((e) => {
+                  running += Number(e.amount);
+                  return (
+                    <div key={e.id} className="grid grid-cols-[100px,1fr,100px,120px,120px] items-center gap-2 border-b border-paper-100 px-4 py-2.5 text-sm last:border-0">
+                      <span className="text-ink-500">{formatDate(e.entry_date)}</span>
+                      <span className="text-ink-900">{e.description}</span>
+                      <span>
+                        <Badge variant={ENTRY_KIND_BADGE[e.kind]}>{e.kind}</Badge>
+                      </span>
+                      <span className={`text-right tabular-nums ${Number(e.amount) < 0 ? "text-danger-600" : "text-ink-900"}`}>
+                        {Number(e.amount).toLocaleString("en-SZ", { minimumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-right tabular-nums font-medium text-ink-900">{running.toLocaleString("en-SZ", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          )}
+        </div>
+      )}
 
       {canManage && (
         <MemberFormDrawer

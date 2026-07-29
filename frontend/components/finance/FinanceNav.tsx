@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 const ITEMS = [
   { href: "/finance/accounts", label: "Chart of accounts" },
   { href: "/finance/receivables", label: "Receivables" },
+  { href: "/finance/payouts", label: "Member payouts" },
   { href: "/finance/journal", label: "Journal entries" },
   { href: "/finance/reports", label: "Reports" },
 ];
