@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { TbCircleCheck, TbAlertTriangle } from "react-icons/tb";
-import { ButtonGroup } from "@/components/ui/Button";
+import { TbCircleCheck, TbAlertTriangle, TbFileTypePdf, TbFileTypeCsv } from "react-icons/tb";
+import { Button, ButtonGroup } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -11,6 +11,7 @@ import { KpiRow, StatCard } from "@/components/ui/StatCard";
 import { Banner } from "@/components/ui/Banner";
 import { formatDate } from "@/lib/formatDate";
 import { createClient } from "@/lib/supabase/client";
+import { exportReportCsv, exportReportPdf, type ExportSection } from "@/lib/exportReport";
 import type { AccountType, Database } from "@/lib/database.types";
 
 type AccountRow = Database["public"]["Tables"]["accounts"]["Row"];
@@ -140,6 +141,105 @@ export function ReportsSection({ tenantId }: ReportsSectionProps) {
   const totalDebit = accountNets.filter((r) => r.debitNet > 0).reduce((s, r) => s + r.debitNet, 0);
   const totalCredit = accountNets.filter((r) => r.debitNet < 0).reduce((s, r) => s + Math.abs(r.debitNet), 0);
 
+  const reportDescription =
+    report === "balance_sheet"
+      ? `A snapshot of everything the association owns and owes as of ${formatDate(endDate)}.`
+      : report === "income_statement"
+        ? `How much came in versus went out between ${formatDate(startDate)} and ${formatDate(endDate)}.`
+        : "A technical check accountants use to confirm every debit has a matching credit — the two totals below should always be equal.";
+
+  const exportSections: ExportSection[] = useMemo(() => {
+    if (report === "balance_sheet") {
+      const equityRows: (string | number)[][] = byType("equity").map((r) => [r.name, money(-r.debitNet)]);
+      if (netIncomeToDate !== 0) equityRows.push(["Current period earnings (not yet closed)", money(netIncomeToDate)]);
+      return [
+        {
+          heading: "Assets",
+          columns: ["Account", "Amount"],
+          rows: byType("asset").map((r) => [r.name, money(r.debitNet)]),
+          totalRow: ["Total assets", money(totalAssets)],
+        },
+        {
+          heading: "Liabilities",
+          columns: ["Account", "Amount"],
+          rows: byType("liability").map((r) => [r.name, money(-r.debitNet)]),
+          totalRow: ["Total liabilities", money(totalLiabilities)],
+        },
+        {
+          heading: "Equity",
+          columns: ["Account", "Amount"],
+          rows: equityRows,
+          totalRow: ["Total equity", money(totalEquity)],
+        },
+        {
+          heading: "Summary",
+          columns: ["", ""],
+          rows: [
+            ["Total assets", money(totalAssets)],
+            ["Total liabilities & equity", money(totalLiabilities + totalEquity)],
+          ],
+          totalRow: ["Balanced?", balanceSheetBalanced ? "Yes" : "No"],
+        },
+      ];
+    }
+
+    if (report === "income_statement") {
+      return [
+        {
+          heading: "Income",
+          columns: ["Account", "Amount"],
+          rows: byType("income").map((r) => [r.name, money(-r.debitNet)]),
+          totalRow: ["Total income", money(totalIncome)],
+        },
+        {
+          heading: "Expenses",
+          columns: ["Account", "Amount"],
+          rows: byType("expense").map((r) => [r.name, money(r.debitNet)]),
+          totalRow: ["Total expenses", money(totalExpense)],
+        },
+        {
+          heading: "Summary",
+          columns: ["", ""],
+          rows: [],
+          totalRow: [netProfit >= 0 ? "Net profit" : "Net loss", money(Math.abs(netProfit))],
+        },
+      ];
+    }
+
+    return [
+      {
+        heading: "Trial balance",
+        columns: ["Code", "Account", "Debit", "Credit"],
+        rows: accountNets.map((r) => [r.code, r.name, r.debitNet > 0 ? money(r.debitNet) : "", r.debitNet < 0 ? money(Math.abs(r.debitNet)) : ""]),
+        totalRow: ["", "Total", money(totalDebit), money(totalCredit)],
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report, accountNets, totalAssets, totalLiabilities, totalEquity, totalIncome, totalExpense, netProfit, netIncomeToDate, totalDebit, totalCredit, balanceSheetBalanced]);
+
+  const exportFileNameBase = `${report}-${endDate.toISOString().slice(0, 10)}`;
+
+  const handleExportPdf = () => {
+    exportReportPdf({
+      title: `Cane & Ledger — ${REPORT_OPTIONS.find((o) => o.value === report)!.label}`,
+      subtitle: reportDescription,
+      sections: exportSections,
+      fileNameBase: exportFileNameBase,
+    });
+  };
+
+  const handleExportCsv = () => {
+    const rows: string[][] = [];
+    for (const section of exportSections) {
+      rows.push([section.heading]);
+      rows.push(section.columns);
+      for (const r of section.rows) rows.push(r.map(String));
+      if (section.totalRow) rows.push(section.totalRow.map(String));
+      rows.push([]);
+    }
+    exportReportCsv({ rows, fileNameBase: exportFileNameBase });
+  };
+
   const trialBalanceColumns: DataTableColumn<AccountNet>[] = [
     { key: "code", header: "Code", render: (r) => <span className="font-mono text-xs">{r.code}</span> },
     { key: "name", header: "Account", render: (r) => r.name },
@@ -180,11 +280,17 @@ export function ReportsSection({ tenantId }: ReportsSectionProps) {
         </div>
       </div>
 
-      <p className="text-sm text-ink-500">
-        {report === "balance_sheet" && `A snapshot of everything the association owns and owes as of ${formatDate(endDate)}.`}
-        {report === "income_statement" && `How much came in versus went out between ${formatDate(startDate)} and ${formatDate(endDate)}.`}
-        {report === "trial_balance" && "A technical check accountants use to confirm every debit has a matching credit — the two totals below should always be equal."}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-ink-500">{reportDescription}</p>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" icon={<TbFileTypePdf />} disabled={accountNets.length === 0} onClick={handleExportPdf}>
+            Download PDF
+          </Button>
+          <Button variant="secondary" size="sm" icon={<TbFileTypeCsv />} disabled={accountNets.length === 0} onClick={handleExportCsv}>
+            Download CSV
+          </Button>
+        </div>
+      </div>
 
       {accountNets.length === 0 ? (
         <EmptyState title="Nothing posted yet" body="Post journal entries to see figures in this report." />

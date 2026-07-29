@@ -29,6 +29,9 @@ export type InvoiceStatus = "draft" | "sent" | "partial" | "paid" | "void";
 export type PayoutRunStatus = "draft" | "approved" | "paid";
 export type MemberAccountEntryKind = "payout" | "advance" | "contribution" | "adjustment";
 
+// Module D: Petty cash monitoring (supabase/migrations/0008_petty_cash.sql)
+export type PettyCashTxType = "expense" | "replenishment";
+
 export interface Database {
   public: {
     Tables: {
@@ -732,6 +735,64 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["member_account_entries"]["Insert"]>;
         Relationships: [];
       };
+      petty_cash_funds: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          account_id: string;
+          name: string;
+          float_amount: number;
+          custodian_name: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          account_id: string;
+          name?: string;
+          float_amount?: number;
+          custodian_name?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["petty_cash_funds"]["Insert"]>;
+        Relationships: [];
+      };
+      petty_cash_transactions: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          fund_id: string;
+          tx_type: PettyCashTxType;
+          tx_date: string;
+          description: string | null;
+          amount: number;
+          category_account_id: string;
+          receipt_ref: string | null;
+          journal_entry_id: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          fund_id: string;
+          tx_type: PettyCashTxType;
+          tx_date?: string;
+          description?: string | null;
+          amount: number;
+          category_account_id: string;
+          receipt_ref?: string | null;
+          journal_entry_id?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["petty_cash_transactions"]["Insert"]>;
+        Relationships: [];
+      };
       audit_log: {
         Row: {
           id: number;
@@ -841,6 +902,36 @@ export interface Database {
         Args: { p_tenant_id: string };
         Returns: undefined;
       };
+      create_quick_journal_entries: {
+        Args: { p_tenant_id: string; p_offset_account_id: string; p_rows: Record<string, unknown>[] };
+        Returns: Database["public"]["Tables"]["journal_entries"]["Row"][];
+      };
+      setup_petty_cash_fund: {
+        Args: { p_tenant_id: string; p_float_amount: number; p_custodian_name: string | null; p_source_account_id: string | null };
+        Returns: Database["public"]["Tables"]["petty_cash_funds"]["Row"];
+      };
+      record_petty_cash_expense: {
+        Args: {
+          p_fund_id: string;
+          p_tx_date: string;
+          p_description: string | null;
+          p_amount: number;
+          p_category_account_id: string;
+          p_receipt_ref: string | null;
+        };
+        Returns: Database["public"]["Tables"]["petty_cash_transactions"]["Row"];
+      };
+      record_petty_cash_replenishment: {
+        Args: {
+          p_fund_id: string;
+          p_tx_date: string;
+          p_description: string | null;
+          p_amount: number;
+          p_source_account_id: string;
+          p_receipt_ref: string | null;
+        };
+        Returns: Database["public"]["Tables"]["petty_cash_transactions"]["Row"];
+      };
     };
     Enums: {
       member_role: MemberRole;
@@ -861,6 +952,7 @@ export interface Database {
       invoice_status: InvoiceStatus;
       payout_run_status: PayoutRunStatus;
       member_account_entry_kind: MemberAccountEntryKind;
+      petty_cash_tx_type: PettyCashTxType;
     };
   };
 }

@@ -9,6 +9,8 @@ const ITEMS = [
   { href: "/finance/receivables", label: "Receivables" },
   { href: "/finance/payouts", label: "Member payouts" },
   { href: "/finance/journal", label: "Journal entries" },
+  { href: "/finance/quick-entry", label: "Quick entry" },
+  { href: "/finance/petty-cash", label: "Petty cash" },
   { href: "/finance/reports", label: "Reports" },
 ];
 
