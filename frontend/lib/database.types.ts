@@ -25,6 +25,10 @@ export type JournalEntryStatus = "draft" | "posted";
 // Module D.1: Accounts Receivable (supabase/migrations/0005_accounts_receivable.sql)
 export type InvoiceStatus = "draft" | "sent" | "partial" | "paid" | "void";
 
+// Module D.2: Deductions engine & member payout runs (supabase/migrations/0006_payout_runs.sql)
+export type PayoutRunStatus = "draft" | "approved" | "paid";
+export type MemberAccountEntryKind = "payout" | "advance" | "contribution" | "adjustment";
+
 export interface Database {
   public: {
     Tables: {
@@ -604,6 +608,130 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["credit_notes"]["Insert"]>;
         Relationships: [];
       };
+      deduction_types: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          position: number;
+          gl_account_id: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          position?: number;
+          gl_account_id: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["deduction_types"]["Insert"]>;
+        Relationships: [];
+      };
+      payout_runs: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          run_no: string;
+          title: string;
+          run_date: string;
+          gross_pool: number;
+          bank_account_id: string;
+          status: PayoutRunStatus;
+          journal_entry_id: string | null;
+          created_by: string | null;
+          approved_by: string | null;
+          approved_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          run_no: string;
+          title: string;
+          run_date?: string;
+          gross_pool: number;
+          bank_account_id: string;
+          status?: PayoutRunStatus;
+          journal_entry_id?: string | null;
+          created_by?: string | null;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["payout_runs"]["Insert"]>;
+        Relationships: [];
+      };
+      payout_run_lines: {
+        Row: {
+          id: string;
+          payout_run_id: string;
+          member_id: string;
+          gross_amount: number;
+          net_amount: number;
+          position: number;
+        };
+        Insert: {
+          id?: string;
+          payout_run_id: string;
+          member_id: string;
+          gross_amount?: number;
+          net_amount?: number;
+          position?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["payout_run_lines"]["Insert"]>;
+        Relationships: [];
+      };
+      payout_deductions: {
+        Row: {
+          id: string;
+          payout_run_line_id: string;
+          deduction_type_id: string;
+          amount: number;
+        };
+        Insert: {
+          id?: string;
+          payout_run_line_id: string;
+          deduction_type_id: string;
+          amount?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["payout_deductions"]["Insert"]>;
+        Relationships: [];
+      };
+      member_account_entries: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          member_id: string;
+          entry_date: string;
+          kind: MemberAccountEntryKind;
+          description: string;
+          amount: number;
+          payout_run_id: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          member_id: string;
+          entry_date?: string;
+          kind: MemberAccountEntryKind;
+          description: string;
+          amount: number;
+          payout_run_id?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["member_account_entries"]["Insert"]>;
+        Relationships: [];
+      };
       audit_log: {
         Row: {
           id: number;
@@ -682,6 +810,37 @@ export interface Database {
         Args: { p_invoice_id: string; p_amount: number; p_reason: string | null; p_revenue_account_id: string };
         Returns: Database["public"]["Tables"]["credit_notes"]["Row"];
       };
+      compute_payout_run: {
+        Args: { p_run_id: string };
+        Returns: Database["public"]["Tables"]["payout_run_lines"]["Row"][];
+      };
+      recompute_payout_line: {
+        Args: { p_line_id: string };
+        Returns: Database["public"]["Tables"]["payout_run_lines"]["Row"];
+      };
+      approve_payout_run: {
+        Args: { p_run_id: string };
+        Returns: Database["public"]["Tables"]["payout_runs"]["Row"];
+      };
+      mark_payout_run_paid: {
+        Args: { p_run_id: string };
+        Returns: Database["public"]["Tables"]["payout_runs"]["Row"];
+      };
+      add_member_account_entry: {
+        Args: {
+          p_tenant_id: string;
+          p_member_id: string;
+          p_entry_date: string;
+          p_kind: MemberAccountEntryKind;
+          p_description: string;
+          p_amount: number;
+        };
+        Returns: Database["public"]["Tables"]["member_account_entries"]["Row"];
+      };
+      seed_default_deduction_types: {
+        Args: { p_tenant_id: string };
+        Returns: undefined;
+      };
     };
     Enums: {
       member_role: MemberRole;
@@ -700,6 +859,8 @@ export interface Database {
       account_type: AccountType;
       journal_entry_status: JournalEntryStatus;
       invoice_status: InvoiceStatus;
+      payout_run_status: PayoutRunStatus;
+      member_account_entry_kind: MemberAccountEntryKind;
     };
   };
 }
