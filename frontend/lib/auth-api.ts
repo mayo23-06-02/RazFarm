@@ -117,7 +117,10 @@ export async function completeRegistration(): Promise<CompleteRegistrationResult
       p_slug: slug,
       p_mill: "other" as MillName,
     });
-    if (!error) return { tenantId: data as unknown as string };
+    if (!error) {
+      await supabase.auth.refreshSession();
+      return { tenantId: data as unknown as string };
+    }
     lastError = error.message;
     if (!/duplicate|unique/i.test(error.message)) break;
   }
@@ -255,4 +258,5 @@ export async function completeInviteAcceptance(token: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.rpc("accept_invite", { p_token: token });
   if (error) throw new AuthApiError(friendlyError(error.message));
+  await supabase.auth.refreshSession();
 }
