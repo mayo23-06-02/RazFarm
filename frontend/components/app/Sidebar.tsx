@@ -39,7 +39,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Finance",
     items: [
-      { icon: <TbCash />, label: "Finances" },
+      { icon: <TbCash />, label: "Finances", href: "/finance/accounts" },
       { icon: <TbPackage />, label: "Inventory" },
     ],
   },

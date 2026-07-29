@@ -18,6 +18,10 @@ export type MinutesStatus = "draft" | "submitted" | "approved";
 export type AnnouncementAudience = "all" | "committee" | "custom";
 export type DocumentCategory = "constitution" | "agreements" | "policies" | "titles" | "general";
 
+// Module D.1: Core Accounting (supabase/migrations/0004_finance_core.sql)
+export type AccountType = "asset" | "liability" | "equity" | "income" | "expense";
+export type JournalEntryStatus = "draft" | "posted";
+
 export interface Database {
   public: {
     Tables: {
@@ -379,6 +383,84 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["documents"]["Insert"]>;
         Relationships: [];
       };
+      accounts: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          code: string;
+          name: string;
+          type: AccountType;
+          parent_id: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          code: string;
+          name: string;
+          type: AccountType;
+          parent_id?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;
+        Relationships: [];
+      };
+      journal_entries: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          entry_no: string;
+          entry_date: string;
+          memo: string | null;
+          status: JournalEntryStatus;
+          created_by: string | null;
+          posted_by: string | null;
+          posted_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          entry_no: string;
+          entry_date?: string;
+          memo?: string | null;
+          status?: JournalEntryStatus;
+          created_by?: string | null;
+          posted_by?: string | null;
+          posted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["journal_entries"]["Insert"]>;
+        Relationships: [];
+      };
+      journal_lines: {
+        Row: {
+          id: string;
+          journal_entry_id: string;
+          account_id: string;
+          position: number;
+          description: string | null;
+          debit: number;
+          credit: number;
+        };
+        Insert: {
+          id?: string;
+          journal_entry_id: string;
+          account_id: string;
+          position?: number;
+          description?: string | null;
+          debit?: number;
+          credit?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["journal_lines"]["Insert"]>;
+        Relationships: [];
+      };
       audit_log: {
         Row: {
           id: number;
@@ -430,6 +512,14 @@ export interface Database {
             }
           | { valid: false; reason: string; tenant_name?: string };
       };
+      post_journal_entry: {
+        Args: { p_entry_id: string };
+        Returns: Database["public"]["Tables"]["journal_entries"]["Row"];
+      };
+      seed_default_chart_of_accounts: {
+        Args: { p_tenant_id: string };
+        Returns: undefined;
+      };
     };
     Enums: {
       member_role: MemberRole;
@@ -445,6 +535,8 @@ export interface Database {
       minutes_status: MinutesStatus;
       announcement_audience: AnnouncementAudience;
       document_category: DocumentCategory;
+      account_type: AccountType;
+      journal_entry_status: JournalEntryStatus;
     };
   };
 }
