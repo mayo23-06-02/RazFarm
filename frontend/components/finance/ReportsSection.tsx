@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { TbCircleCheck, TbAlertTriangle } from "react-icons/tb";
 import { ButtonGroup } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Card } from "@/components/ui/Card";
+import { KpiRow, StatCard } from "@/components/ui/StatCard";
+import { Banner } from "@/components/ui/Banner";
+import { formatDate } from "@/lib/formatDate";
 import { createClient } from "@/lib/supabase/client";
 import type { AccountType, Database } from "@/lib/database.types";
 
@@ -18,14 +23,13 @@ interface PostedLine {
 }
 
 const REPORT_OPTIONS = [
-  { value: "trial_balance", label: "Trial balance" },
-  { value: "income_statement", label: "Income statement" },
   { value: "balance_sheet", label: "Balance sheet" },
+  { value: "income_statement", label: "Income statement" },
+  { value: "trial_balance", label: "Trial balance" },
 ];
 
 // Assets/expenses carry a natural debit balance; liabilities/equity/income
-// carry a natural credit balance — decides the sign shown in the P&L/balance
-// sheet (which show one signed, human-readable "balance" per account).
+// carry a natural credit balance — decides the sign shown to the user.
 const DEBIT_NORMAL: AccountType[] = ["asset", "expense"];
 
 interface AccountNet {
@@ -35,12 +39,16 @@ interface AccountNet {
   debitNet: number; // sum(debit) - sum(credit), unsigned by account type
 }
 
+function money(v: number) {
+  return v.toLocaleString("en-SZ", { minimumFractionDigits: 2 });
+}
+
 export interface ReportsSectionProps {
   tenantId: string;
 }
 
 export function ReportsSection({ tenantId }: ReportsSectionProps) {
-  const [report, setReport] = useState<"trial_balance" | "income_statement" | "balance_sheet">("trial_balance");
+  const [report, setReport] = useState<"trial_balance" | "income_statement" | "balance_sheet">("balance_sheet");
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
   const [startDate, setStartDate] = useState(oneYearAgo);
@@ -98,30 +106,67 @@ export function ReportsSection({ tenantId }: ReportsSectionProps) {
       .map((a) => ({ code: a.code, name: a.name, type: a.type, debitNet: totals.get(a.id) ?? 0 }));
   }, [accounts, lines, report, startDate, endDate]);
 
-  const trialBalanceColumns: DataTableColumn<AccountNet>[] = [
-    { key: "code", header: "Code", render: (r) => <span className="font-mono text-xs">{r.code}</span> },
-    { key: "name", header: "Account", render: (r) => r.name },
-    { key: "debit", header: "Debit", align: "right", render: (r) => (r.debitNet > 0 ? r.debitNet.toLocaleString("en-SZ", { minimumFractionDigits: 2 }) : "") },
-    { key: "credit", header: "Credit", align: "right", render: (r) => (r.debitNet < 0 ? Math.abs(r.debitNet).toLocaleString("en-SZ", { minimumFractionDigits: 2 }) : "") },
-  ];
+  const byType = (type: AccountType) => accountNets.filter((r) => r.type === type);
+  const groupBalance = (type: AccountType) => byType(type).reduce((s, r) => s + (DEBIT_NORMAL.includes(type) ? r.debitNet : -r.debitNet), 0);
 
-  const balanceColumns: DataTableColumn<AccountNet>[] = [
-    { key: "code", header: "Code", render: (r) => <span className="font-mono text-xs">{r.code}</span> },
-    { key: "name", header: "Account", render: (r) => r.name },
-    {
-      key: "balance",
-      header: "Balance",
-      align: "right",
-      render: (r) => (DEBIT_NORMAL.includes(r.type) ? r.debitNet : -r.debitNet).toLocaleString("en-SZ", { minimumFractionDigits: 2 }),
-    },
-  ];
+  // Income/expense are "temporary" accounts that a real bookkeeping system
+  // moves into equity via a period-end closing entry. A layman treasurer
+  // shouldn't have to know that — instead, always fold not-yet-closed
+  // earnings into the balance sheet automatically, computed as-of the same
+  // end date regardless of which report tab is showing (accountNets is
+  // filtered to the current report's account types, so this uses the raw
+  // lines/accounts data directly rather than accountNets).
+  const netIncomeToDate = useMemo(() => {
+    const end = endDate.toISOString().slice(0, 10);
+    const accountType = new Map(accounts.map((a) => [a.id, a.type]));
+    let net = 0;
+    for (const l of lines) {
+      if (l.entry_date > end) continue;
+      const type = accountType.get(l.account_id);
+      if (type === "income") net += l.credit - l.debit;
+      else if (type === "expense") net -= l.debit - l.credit;
+    }
+    return net;
+  }, [accounts, lines, endDate]);
+
+  const totalAssets = groupBalance("asset");
+  const totalLiabilities = groupBalance("liability");
+  const totalEquity = groupBalance("equity") + (report === "balance_sheet" ? netIncomeToDate : 0);
+  const totalIncome = groupBalance("income");
+  const totalExpense = groupBalance("expense");
+  const netProfit = totalIncome - totalExpense;
+  const balanceSheetBalanced = Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01;
 
   const totalDebit = accountNets.filter((r) => r.debitNet > 0).reduce((s, r) => s + r.debitNet, 0);
   const totalCredit = accountNets.filter((r) => r.debitNet < 0).reduce((s, r) => s + Math.abs(r.debitNet), 0);
-  const signedTotal = accountNets.reduce((s, r) => s + (DEBIT_NORMAL.includes(r.type) ? r.debitNet : -r.debitNet), 0);
+
+  const trialBalanceColumns: DataTableColumn<AccountNet>[] = [
+    { key: "code", header: "Code", render: (r) => <span className="font-mono text-xs">{r.code}</span> },
+    { key: "name", header: "Account", render: (r) => r.name },
+    { key: "debit", header: "Debit", align: "right", render: (r) => (r.debitNet > 0 ? money(r.debitNet) : "") },
+    { key: "credit", header: "Credit", align: "right", render: (r) => (r.debitNet < 0 ? money(Math.abs(r.debitNet)) : "") },
+  ];
+
+  function GroupList({ type, emptyLabel }: { type: AccountType; emptyLabel: string }) {
+    const rows = byType(type);
+    if (rows.length === 0) return <p className="px-1 py-2 text-sm text-ink-400">{emptyLabel}</p>;
+    return (
+      <div className="flex flex-col">
+        {rows.map((r) => {
+          const value = DEBIT_NORMAL.includes(type) ? r.debitNet : -r.debitNet;
+          return (
+            <div key={r.code} className="flex items-center justify-between gap-3 border-b border-paper-100 px-1 py-2 text-sm last:border-0">
+              <span className="text-ink-700">{r.name}</span>
+              <span className="tabular-nums text-ink-900">{money(value)}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ButtonGroup options={REPORT_OPTIONS} value={report} onChange={(v) => setReport(v as typeof report)} />
         <div className="flex items-center gap-2">
@@ -135,24 +180,97 @@ export function ReportsSection({ tenantId }: ReportsSectionProps) {
         </div>
       </div>
 
+      <p className="text-sm text-ink-500">
+        {report === "balance_sheet" && `A snapshot of everything the association owns and owes as of ${formatDate(endDate)}.`}
+        {report === "income_statement" && `How much came in versus went out between ${formatDate(startDate)} and ${formatDate(endDate)}.`}
+        {report === "trial_balance" && "A technical check accountants use to confirm every debit has a matching credit — the two totals below should always be equal."}
+      </p>
+
       {accountNets.length === 0 ? (
-        <EmptyState title="Nothing posted yet" body="Post journal entries to see figures in this report." compact />
-      ) : report === "trial_balance" ? (
+        <EmptyState title="Nothing posted yet" body="Post journal entries to see figures in this report." />
+      ) : report === "balance_sheet" ? (
         <>
-          <DataTable columns={trialBalanceColumns} data={accountNets} rowKey={(r) => r.code} loading={loading} />
-          <div className="flex justify-end gap-6 rounded-card border border-paper-200 bg-paper-50 px-4 py-3 text-sm font-medium">
-            <span className="tabular-nums text-ink-900">Debit {totalDebit.toLocaleString("en-SZ", { minimumFractionDigits: 2 })}</span>
-            <span className="tabular-nums text-ink-900">Credit {totalCredit.toLocaleString("en-SZ", { minimumFractionDigits: 2 })}</span>
+          <KpiRow>
+            <StatCard label="Total assets" value={totalAssets} formatValue={money} />
+            <StatCard label="Total liabilities" value={totalLiabilities} formatValue={money} />
+            <StatCard label="Total equity" value={totalEquity} formatValue={money} />
+          </KpiRow>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card title="What you own (Assets)">
+              <GroupList type="asset" emptyLabel="No assets recorded yet." />
+              <div className="mt-2 flex items-center justify-between border-t border-paper-200 px-1 pt-2 text-sm font-semibold text-ink-900">
+                <span>Total assets</span>
+                <span className="tabular-nums">{money(totalAssets)}</span>
+              </div>
+            </Card>
+            <Card title="What you owe & are worth (Liabilities & Equity)">
+              <p className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-ink-400">Liabilities</p>
+              <GroupList type="liability" emptyLabel="No liabilities recorded yet." />
+              <p className="mb-1 mt-3 px-1 text-xs font-medium uppercase tracking-wide text-ink-400">Equity</p>
+              <GroupList type="equity" emptyLabel="No equity recorded yet." />
+              {netIncomeToDate !== 0 && (
+                <div className="flex items-center justify-between gap-3 border-b border-paper-100 px-1 py-2 text-sm last:border-0">
+                  <span className="text-ink-700">Current period earnings (not yet closed)</span>
+                  <span className="tabular-nums text-ink-900">{money(netIncomeToDate)}</span>
+                </div>
+              )}
+              <div className="mt-2 flex items-center justify-between border-t border-paper-200 px-1 pt-2 text-sm font-semibold text-ink-900">
+                <span>Total liabilities & equity</span>
+                <span className="tabular-nums">{money(totalLiabilities + totalEquity)}</span>
+              </div>
+            </Card>
+          </div>
+          <Banner variant={balanceSheetBalanced ? "info" : "danger"}>
+            {balanceSheetBalanced ? (
+              <span className="flex items-center gap-1.5">
+                <TbCircleCheck className="size-4" /> Balanced — total assets match total liabilities plus equity.
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5">
+                <TbAlertTriangle className="size-4" /> Assets and liabilities + equity don&apos;t match — check for unposted or missing entries.
+              </span>
+            )}
+          </Banner>
+        </>
+      ) : report === "income_statement" ? (
+        <>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card title="Income">
+              <GroupList type="income" emptyLabel="No income recorded in this period." />
+            </Card>
+            <Card title="Expenses">
+              <GroupList type="expense" emptyLabel="No expenses recorded in this period." />
+            </Card>
+          </div>
+          <div
+            className={`flex items-center justify-between rounded-card border p-5 shadow-card ${
+              netProfit >= 0 ? "border-field-500/30 bg-field-50" : "border-danger-600/30 bg-danger-50"
+            }`}
+          >
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-ink-500">{netProfit >= 0 ? "Net profit" : "Net loss"}</p>
+              <p className="mt-1 text-xs text-ink-500">Income ({money(totalIncome)}) minus expenses ({money(totalExpense)})</p>
+            </div>
+            <p className={`font-display text-2xl font-bold tabular-nums ${netProfit >= 0 ? "text-field-500" : "text-danger-600"}`}>
+              {money(Math.abs(netProfit))}
+            </p>
           </div>
         </>
       ) : (
         <>
-          <DataTable columns={balanceColumns} data={accountNets} rowKey={(r) => r.code} loading={loading} />
-          <div className="flex justify-end gap-4 rounded-card border border-paper-200 bg-paper-50 px-4 py-3 text-sm font-medium">
-            <span className="text-ink-700">{report === "income_statement" ? `Net ${signedTotal >= 0 ? "profit" : "loss"}` : "Total"}</span>
-            <span className="tabular-nums text-ink-900">
-              {report === "income_statement" ? Math.abs(signedTotal).toLocaleString("en-SZ", { minimumFractionDigits: 2 }) : signedTotal.toLocaleString("en-SZ", { minimumFractionDigits: 2 })}
-            </span>
+          <DataTable columns={trialBalanceColumns} data={accountNets} rowKey={(r) => r.code} loading={loading} />
+          <div className="flex justify-end gap-6 rounded-card border border-paper-200 bg-paper-50 px-4 py-3 text-sm font-medium">
+            <span className="tabular-nums text-ink-900">Total debit: {money(totalDebit)}</span>
+            <span className="tabular-nums text-ink-900">Total credit: {money(totalCredit)}</span>
+            {Math.abs(totalDebit - totalCredit) < 0.01 ? (
+              <span className="flex items-center gap-1 text-field-500">
+                <TbCircleCheck className="size-4" /> Balanced
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-danger-600">
+                <TbAlertTriangle className="size-4" /> Out of balance
+              </span>
+            )}
           </div>
         </>
       )}
