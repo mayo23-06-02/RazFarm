@@ -12,6 +12,7 @@ import {
   TbSettings,
   TbSpeakerphone,
   TbTruck,
+  TbUserCog,
   TbUsers,
 } from "react-icons/tb";
 import { NavItem } from "./NavItem";
@@ -39,6 +40,10 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Finance",
     items: [{ icon: <TbCash />, label: "Finances", href: "/finance/accounts" }],
+  },
+  {
+    label: "Staff",
+    items: [{ icon: <TbUserCog />, label: "Employees & contractors", href: "/staff" }],
   },
   {
     label: "Inventory",
