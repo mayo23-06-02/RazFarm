@@ -55,7 +55,7 @@ export function SuppliersSection({ tenantId, initialSuppliers, canManage }: Supp
         data={suppliers}
         rowKey={(s) => s.id}
         emptyTitle="No suppliers yet"
-        emptyBody={canManage ? "Add suppliers you buy fertilizer, chemicals or seed cane from." : "No suppliers have been added yet."}
+        emptyBody={canManage ? "Add suppliers you buy fertilizer, chemicals, seed cane or equipment from." : "No suppliers have been added yet."}
       />
 
       {canManage && (
