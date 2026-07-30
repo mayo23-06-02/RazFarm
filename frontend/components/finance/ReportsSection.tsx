@@ -130,6 +130,12 @@ export function ReportsSection({ tenantId }: ReportsSectionProps) {
     return net;
   }, [accounts, lines, endDate]);
 
+  // Inventory (account 1300, created on demand by ensure_inventory_account —
+  // see 0009 §5) posts automatically on every stock receipt/issue/adjustment
+  // and PO receipt, so this always reflects inventory value straight from the
+  // ledger — no separate sync step, this *is* the finance side of it.
+  const inventoryValue = accountNets.find((a) => a.code === "1300")?.debitNet ?? 0;
+
   const totalAssets = groupBalance("asset");
   const totalLiabilities = groupBalance("liability");
   const totalEquity = groupBalance("equity") + (report === "balance_sheet" ? netIncomeToDate : 0);
@@ -300,6 +306,7 @@ export function ReportsSection({ tenantId }: ReportsSectionProps) {
             <StatCard label="Total assets" value={totalAssets} formatValue={money} />
             <StatCard label="Total liabilities" value={totalLiabilities} formatValue={money} />
             <StatCard label="Total equity" value={totalEquity} formatValue={money} />
+            <StatCard label="Inventory value" value={inventoryValue} formatValue={money} />
           </KpiRow>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card title="What you own (Assets)">

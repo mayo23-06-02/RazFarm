@@ -5,6 +5,7 @@ import { Drawer } from "@/components/ui/Drawer";
 import { FormRow } from "@/components/ui/FormRow";
 import { Input, FieldError } from "@/components/ui/Input";
 import { MoneyInput } from "@/components/ui/MoneyInput";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { Combobox } from "@/components/ui/Select";
 import { ButtonGroup, Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -37,6 +38,8 @@ export function ReceiveStockDrawer({ item, onOpenChange, accounts, onSaved }: Re
   const [unitCost, setUnitCost] = useState(0);
   const [creditAccountId, setCreditAccountId] = useState("");
   const [reference, setReference] = useState("");
+  const [batchNo, setBatchNo] = useState("");
+  const [expiryDate, setExpiryDate] = useState<Date | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -46,6 +49,8 @@ export function ReceiveStockDrawer({ item, onOpenChange, accounts, onSaved }: Re
     setUnitCost(item.average_cost);
     setCreditAccountId("");
     setReference("");
+    setBatchNo("");
+    setExpiryDate(undefined);
     setError(null);
   }, [item]);
 
@@ -69,6 +74,8 @@ export function ReceiveStockDrawer({ item, onOpenChange, accounts, onSaved }: Re
       p_unit_cost: unitCost,
       p_credit_account_id: creditAccountId,
       p_reference: reference || null,
+      p_batch_no: batchNo.trim() || null,
+      p_expiry_date: expiryDate ? expiryDate.toISOString().slice(0, 10) : null,
     });
     setSaving(false);
     if (rpcError) {
@@ -94,6 +101,12 @@ export function ReceiveStockDrawer({ item, onOpenChange, accounts, onSaved }: Re
         </FormRow>
         <FormRow label="Reference" hint="Optional — supplier invoice or delivery note number">
           <Input value={reference} onChange={(e) => setReference(e.target.value)} />
+        </FormRow>
+        <FormRow label="Batch / lot number" hint="Optional">
+          <Input value={batchNo} onChange={(e) => setBatchNo(e.target.value)} />
+        </FormRow>
+        <FormRow label="Expiry date" hint="Optional">
+          <DatePicker value={expiryDate} onChange={setExpiryDate} />
         </FormRow>
         {error && <FieldError>{error}</FieldError>}
         <div className="flex justify-end gap-2 pt-2">

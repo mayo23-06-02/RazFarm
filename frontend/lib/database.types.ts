@@ -33,7 +33,15 @@ export type MemberAccountEntryKind = "payout" | "advance" | "contribution" | "ad
 export type PettyCashTxType = "expense" | "replenishment";
 
 // Module F.1: Inventory core (supabase/migrations/0009_inventory_core.sql)
-export type InventoryItemCategory = "fertilizer" | "chemical" | "seed_cane" | "other";
+export type InventoryItemCategory =
+  | "fertilizer"
+  | "chemical"
+  | "seed_cane"
+  | "equipment"
+  | "vehicle"
+  | "plant_equipment"
+  | "other";
+export type InventoryItemCondition = "excellent" | "good" | "fair" | "poor" | "out_of_service";
 export type StockMovementType = "receipt" | "issue" | "adjustment";
 
 // Module F.2: Purchase orders & goods-received notes (supabase/migrations/0010_purchase_orders.sql)
@@ -853,6 +861,14 @@ export interface Database {
           average_cost: number;
           default_supplier_id: string | null;
           is_active: boolean;
+          storage_location: string | null;
+          batch_no: string | null;
+          expiry_date: string | null;
+          max_stock_level: number | null;
+          preferred_order_qty: number | null;
+          serial_or_asset_no: string | null;
+          purchase_date: string | null;
+          condition: InventoryItemCondition | null;
           created_at: string;
           updated_at: string;
         };
@@ -868,6 +884,14 @@ export interface Database {
           average_cost?: number;
           default_supplier_id?: string | null;
           is_active?: boolean;
+          storage_location?: string | null;
+          batch_no?: string | null;
+          expiry_date?: string | null;
+          max_stock_level?: number | null;
+          preferred_order_qty?: number | null;
+          serial_or_asset_no?: string | null;
+          purchase_date?: string | null;
+          condition?: InventoryItemCondition | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1034,6 +1058,34 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["supplier_bills"]["Insert"]>;
+        Relationships: [];
+      };
+      equipment_service_log: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          item_id: string;
+          service_date: string;
+          description: string;
+          cost: number;
+          performed_by: string | null;
+          odometer_or_hours: number | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          item_id: string;
+          service_date?: string;
+          description: string;
+          cost?: number;
+          performed_by?: string | null;
+          odometer_or_hours?: number | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["equipment_service_log"]["Insert"]>;
         Relationships: [];
       };
       audit_log: {
@@ -1539,8 +1591,30 @@ export interface Database {
         Returns: Database["public"]["Tables"]["petty_cash_transactions"]["Row"];
       };
       record_stock_receipt: {
-        Args: { p_item_id: string; p_quantity: number; p_unit_cost: number; p_credit_account_id: string; p_reference: string | null };
+        Args: {
+          p_item_id: string;
+          p_quantity: number;
+          p_unit_cost: number;
+          p_credit_account_id: string;
+          p_reference: string | null;
+          p_batch_no?: string | null;
+          p_expiry_date?: string | null;
+        };
         Returns: Database["public"]["Tables"]["stock_movements"]["Row"];
+      };
+      list_inventory_stock_levels: {
+        Args: { p_tenant_id: string };
+        Returns: {
+          id: string;
+          sku: string;
+          name: string;
+          category: InventoryItemCategory;
+          unit: string;
+          quantity_on_hand: number;
+          is_low_stock: boolean;
+          storage_location: string | null;
+          is_active: boolean;
+        }[];
       };
       record_stock_issue: {
         Args: { p_item_id: string; p_quantity: number; p_expense_account_id: string; p_reference: string | null };
@@ -1618,6 +1692,7 @@ export interface Database {
       member_account_entry_kind: MemberAccountEntryKind;
       petty_cash_tx_type: PettyCashTxType;
       inventory_item_category: InventoryItemCategory;
+      inventory_item_condition: InventoryItemCondition;
       stock_movement_type: StockMovementType;
       purchase_order_status: PurchaseOrderStatus;
       supplier_bill_status: SupplierBillStatus;

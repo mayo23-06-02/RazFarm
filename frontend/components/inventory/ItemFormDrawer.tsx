@@ -5,11 +5,12 @@ import { Drawer } from "@/components/ui/Drawer";
 import { Input, FieldError } from "@/components/ui/Input";
 import { FormRow } from "@/components/ui/FormRow";
 import { Select, Combobox } from "@/components/ui/Select";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { Toggle } from "@/components/ui/Checkbox";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { createClient } from "@/lib/supabase/client";
-import type { Database, InventoryItemCategory } from "@/lib/database.types";
+import type { Database, InventoryItemCategory, InventoryItemCondition } from "@/lib/database.types";
 
 type ItemRow = Database["public"]["Tables"]["inventory_items"]["Row"];
 
@@ -17,14 +18,27 @@ const CATEGORY_OPTIONS = [
   { value: "fertilizer", label: "Fertilizer" },
   { value: "chemical", label: "Chemical" },
   { value: "seed_cane", label: "Seed cane" },
+  { value: "equipment", label: "Equipment" },
+  { value: "vehicle", label: "Vehicle" },
+  { value: "plant_equipment", label: "Plant equipment" },
   { value: "other", label: "Other" },
 ];
+
+const ASSET_CATEGORIES: InventoryItemCategory[] = ["equipment", "vehicle", "plant_equipment"];
 
 const UNIT_OPTIONS = [
   { value: "kg", label: "kg" },
   { value: "L", label: "L" },
   { value: "bag", label: "bag" },
   { value: "each", label: "each" },
+];
+
+const CONDITION_OPTIONS = [
+  { value: "excellent", label: "Excellent" },
+  { value: "good", label: "Good" },
+  { value: "fair", label: "Fair" },
+  { value: "poor", label: "Poor" },
+  { value: "out_of_service", label: "Out of service" },
 ];
 
 export interface ItemFormDrawerProps {
@@ -44,10 +58,18 @@ export function ItemFormDrawer({ tenantId, open, onOpenChange, item, suppliers, 
   const [category, setCategory] = useState<InventoryItemCategory>("other");
   const [unit, setUnit] = useState("each");
   const [reorderLevel, setReorderLevel] = useState("0");
+  const [maxStockLevel, setMaxStockLevel] = useState("");
+  const [preferredOrderQty, setPreferredOrderQty] = useState("");
+  const [storageLocation, setStorageLocation] = useState("");
   const [defaultSupplierId, setDefaultSupplierId] = useState("");
+  const [serialOrAssetNo, setSerialOrAssetNo] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState<Date | undefined>(undefined);
+  const [condition, setCondition] = useState<InventoryItemCondition | "">("");
   const [isActive, setIsActive] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const isAsset = ASSET_CATEGORIES.includes(category);
 
   useEffect(() => {
     if (!open) return;
@@ -56,7 +78,13 @@ export function ItemFormDrawer({ tenantId, open, onOpenChange, item, suppliers, 
     setCategory(item?.category ?? "other");
     setUnit(item?.unit ?? "each");
     setReorderLevel(item ? String(item.reorder_level) : "0");
+    setMaxStockLevel(item?.max_stock_level != null ? String(item.max_stock_level) : "");
+    setPreferredOrderQty(item?.preferred_order_qty != null ? String(item.preferred_order_qty) : "");
+    setStorageLocation(item?.storage_location ?? "");
     setDefaultSupplierId(item?.default_supplier_id ?? "");
+    setSerialOrAssetNo(item?.serial_or_asset_no ?? "");
+    setPurchaseDate(item?.purchase_date ? new Date(item.purchase_date) : undefined);
+    setCondition(item?.condition ?? "");
     setIsActive(item?.is_active ?? true);
     setError(null);
   }, [open, item]);
@@ -75,7 +103,13 @@ export function ItemFormDrawer({ tenantId, open, onOpenChange, item, suppliers, 
       category,
       unit,
       reorder_level: Number(reorderLevel) || 0,
+      max_stock_level: maxStockLevel.trim() ? Number(maxStockLevel) : null,
+      preferred_order_qty: preferredOrderQty.trim() ? Number(preferredOrderQty) : null,
+      storage_location: storageLocation.trim() || null,
       default_supplier_id: defaultSupplierId || null,
+      serial_or_asset_no: serialOrAssetNo.trim() || null,
+      purchase_date: purchaseDate ? purchaseDate.toISOString().slice(0, 10) : null,
+      condition: condition || null,
       is_active: isActive,
     };
 
@@ -112,6 +146,15 @@ export function ItemFormDrawer({ tenantId, open, onOpenChange, item, suppliers, 
         <FormRow label="Reorder level" hint="Get an alert when stock on hand falls to or below this">
           <Input type="number" step="0.01" value={reorderLevel} onChange={(e) => setReorderLevel(e.target.value)} />
         </FormRow>
+        <FormRow label="Max stock level" hint="Optional — ceiling to avoid over-ordering">
+          <Input type="number" step="0.01" value={maxStockLevel} onChange={(e) => setMaxStockLevel(e.target.value)} />
+        </FormRow>
+        <FormRow label="Preferred order quantity" hint="Optional — how much to reorder each time">
+          <Input type="number" step="0.01" value={preferredOrderQty} onChange={(e) => setPreferredOrderQty(e.target.value)} />
+        </FormRow>
+        <FormRow label="Storage location" hint="Optional — which store, shed or field it's kept in">
+          <Input value={storageLocation} onChange={(e) => setStorageLocation(e.target.value)} placeholder="e.g. Main store, Bay 3" />
+        </FormRow>
         <FormRow label="Default supplier" hint="Optional — who you usually buy this from">
           <Combobox
             options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
@@ -120,6 +163,23 @@ export function ItemFormDrawer({ tenantId, open, onOpenChange, item, suppliers, 
             placeholder="Choose a supplier…"
           />
         </FormRow>
+        {isAsset && (
+          <>
+            <FormRow label="Serial / registration number" hint="Optional — engine serial, VIN, or plate number">
+              <Input value={serialOrAssetNo} onChange={(e) => setSerialOrAssetNo(e.target.value)} />
+            </FormRow>
+            <FormRow label="Purchase date" hint="Optional">
+              <DatePicker value={purchaseDate} onChange={setPurchaseDate} />
+            </FormRow>
+            <FormRow label="Condition" hint="Optional">
+              <Select
+                options={[{ value: "", label: "Not set" }, ...CONDITION_OPTIONS]}
+                value={condition}
+                onChange={(v) => setCondition(v as InventoryItemCondition | "")}
+              />
+            </FormRow>
+          </>
+        )}
         {isEdit && (
           <FormRow label="Status" hint="Inactive items are hidden from new stock movements but keep their history">
             <Toggle label={isActive ? "Active" : "Inactive"} checked={isActive} onChange={setIsActive} />

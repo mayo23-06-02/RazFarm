@@ -1,15 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { TbAlertTriangle, TbArrowDownRight, TbArrowUpRight, TbAdjustments, TbEdit, TbPackage, TbPlus } from "react-icons/tb";
+import { TbAlertTriangle, TbArrowDownRight, TbArrowUpRight, TbAdjustments, TbEdit, TbPackage, TbPlus, TbTool } from "react-icons/tb";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { KpiRow, StatCard } from "@/components/ui/StatCard";
+import { formatDate } from "@/lib/formatDate";
+import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { ItemFormDrawer } from "./ItemFormDrawer";
 import { ReceiveStockDrawer, IssueStockDrawer, AdjustStockDrawer } from "./StockActionDrawers";
-import type { Database, InventoryItemCategory } from "@/lib/database.types";
+import { EquipmentServiceLogDrawer } from "./EquipmentServiceLogDrawer";
+import type { Database, InventoryItemCategory, InventoryItemCondition } from "@/lib/database.types";
 
 type ItemRow = Database["public"]["Tables"]["inventory_items"]["Row"];
 
@@ -24,11 +27,40 @@ const CATEGORY_LABEL: Record<InventoryItemCategory, string> = {
   fertilizer: "Fertilizer",
   chemical: "Chemical",
   seed_cane: "Seed cane",
+  equipment: "Equipment",
+  vehicle: "Vehicle",
+  plant_equipment: "Plant equipment",
   other: "Other",
 };
 
+const ASSET_CATEGORIES: InventoryItemCategory[] = ["equipment", "vehicle", "plant_equipment"];
+
+const CONDITION_LABEL: Record<InventoryItemCondition, string> = {
+  excellent: "Excellent",
+  good: "Good",
+  fair: "Fair",
+  poor: "Poor",
+  out_of_service: "Out of service",
+};
+
+const CONDITION_VARIANT: Record<InventoryItemCondition, "success" | "brand" | "warning" | "danger"> = {
+  excellent: "success",
+  good: "success",
+  fair: "brand",
+  poor: "warning",
+  out_of_service: "danger",
+};
+
+const EXPIRY_WARNING_DAYS = 30;
+
 function money(v: number) {
   return v.toLocaleString("en-SZ", { minimumFractionDigits: 2 });
+}
+
+function isExpiringSoon(expiryDate: string | null) {
+  if (!expiryDate) return false;
+  const days = (new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+  return days <= EXPIRY_WARNING_DAYS;
 }
 
 export interface ItemsSectionProps {
@@ -46,6 +78,7 @@ export function ItemsSection({ tenantId, initialItems, suppliers, accounts, canM
   const [receiveTarget, setReceiveTarget] = useState<ItemRow | null>(null);
   const [issueTarget, setIssueTarget] = useState<ItemRow | null>(null);
   const [adjustTarget, setAdjustTarget] = useState<ItemRow | null>(null);
+  const [serviceLogTarget, setServiceLogTarget] = useState<ItemRow | null>(null);
 
   const refresh = async () => {
     const supabase = createClient();
@@ -80,6 +113,22 @@ export function ItemsSection({ tenantId, initialItems, suppliers, accounts, canM
     },
     { key: "avgCost", header: "Avg. cost", align: "right", render: (i) => money(i.average_cost) },
     { key: "value", header: "Value", align: "right", render: (i) => money(i.quantity_on_hand * i.average_cost) },
+    { key: "location", header: "Location", render: (i) => i.storage_location ?? <span className="text-ink-300">—</span> },
+    {
+      key: "expiryOrCondition",
+      header: "Expiry / condition",
+      render: (i) =>
+        ASSET_CATEGORIES.includes(i.category) ? (
+          i.condition ? <Badge variant={CONDITION_VARIANT[i.condition]}>{CONDITION_LABEL[i.condition]}</Badge> : <span className="text-ink-300">—</span>
+        ) : i.expiry_date ? (
+          <span className={cn("inline-flex items-center gap-1.5", isExpiringSoon(i.expiry_date) && "text-danger-600")}>
+            {isExpiringSoon(i.expiry_date) && <TbAlertTriangle className="size-3.5" title="Expiring soon" />}
+            {formatDate(i.expiry_date)}
+          </span>
+        ) : (
+          <span className="text-ink-300">—</span>
+        ),
+    },
     { key: "status", header: "Status", render: (i) => (!i.is_active ? <Badge variant="neutral">Inactive</Badge> : null) },
   ];
 
@@ -104,16 +153,19 @@ export function ItemsSection({ tenantId, initialItems, suppliers, accounts, canM
         data={items}
         rowKey={(i) => i.id}
         emptyTitle="No inventory items yet"
-        emptyBody={canManage ? "Add fertilizer, chemicals, seed cane or other inputs to start tracking stock." : "No inventory items have been set up yet."}
+        emptyBody={canManage ? "Add fertilizer, chemicals, seed cane, equipment, vehicles, plant equipment or other inputs to start tracking stock." : "No inventory items have been set up yet."}
         rowActions={
           canManage
             ? (i) => [
                 { label: "Receive stock", icon: <TbArrowDownRight />, onSelect: () => setReceiveTarget(i) },
                 { label: "Issue stock", icon: <TbArrowUpRight />, onSelect: () => setIssueTarget(i) },
                 { label: "Adjust stock", icon: <TbAdjustments />, onSelect: () => setAdjustTarget(i) },
+                ...(ASSET_CATEGORIES.includes(i.category)
+                  ? [{ label: "Service log", icon: <TbTool />, onSelect: () => setServiceLogTarget(i) }]
+                  : []),
                 { label: "Edit item", icon: <TbEdit />, onSelect: () => setEditing(i) },
               ]
-            : undefined
+            : (i) => (ASSET_CATEGORIES.includes(i.category) ? [{ label: "Service log", icon: <TbTool />, onSelect: () => setServiceLogTarget(i) }] : [])
         }
       />
 
@@ -126,6 +178,7 @@ export function ItemsSection({ tenantId, initialItems, suppliers, accounts, canM
           <AdjustStockDrawer item={adjustTarget} onOpenChange={(v) => !v && setAdjustTarget(null)} onSaved={refresh} />
         </>
       )}
+      <EquipmentServiceLogDrawer tenantId={tenantId} item={serviceLogTarget} onOpenChange={(v) => !v && setServiceLogTarget(null)} canManage={canManage} />
     </div>
   );
 }
