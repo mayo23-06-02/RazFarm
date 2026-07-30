@@ -48,7 +48,7 @@ export type StockMovementType = "receipt" | "issue" | "adjustment";
 export type PurchaseOrderStatus = "draft" | "issued" | "received" | "billed" | "cancelled";
 export type SupplierBillStatus = "open" | "paid";
 
-// Module B: Cane Production & Field Management (supabase/migrations/0011_cane_production_fields.sql)
+// Module B: Cane Production & Field Management (supabase/migrations/0013_cane_production_fields.sql)
 export type IrrigationType = "furrow" | "sprinkler" | "drip" | "rainfed";
 export type FieldStatus = "active" | "fallow" | "harvesting" | "replanting" | "retired";
 export type CropCycleType = "plant" | "ratoon";
@@ -56,7 +56,7 @@ export type CropCycleStatus = "growing" | "ready_to_harvest" | "harvesting" | "h
 export type FieldActivityType = "land_prep" | "planting" | "fertilizer" | "herbicide" | "pesticide" | "ripener" | "irrigation" | "other";
 export type HarvestPlanStatus = "planned" | "burn_scheduled" | "cutting" | "completed" | "cancelled";
 
-// Module C: Mill Deliveries & Sucrose Tracking (supabase/migrations/0012_mill_deliveries.sql)
+// Module C: Mill Deliveries & Sucrose Tracking (supabase/migrations/0014_mill_deliveries.sql)
 export type DeliveryStatus = "dispatched" | "result_captured" | "reconciled";
 
 export interface Database {

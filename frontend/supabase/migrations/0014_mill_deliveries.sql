@@ -114,7 +114,7 @@ create policy mill_results_select on public.mill_results
 -- No direct insert/update policy — only record_mill_result() below, so the
 -- 1:1 relationship with deliveries and the delivery-status transition it
 -- drives can't be bypassed by a direct write (same reasoning as
--- crop_cycles in 0011 §4).
+-- crop_cycles in 0013 §4).
 
 create trigger set_deliveries_updated_at
   before update on public.deliveries
@@ -208,7 +208,7 @@ grant execute on function public.reconcile_delivery(uuid) to authenticated;
 -- field_delivery_reconciliation (Module B harvest_captures vs Module C
 -- deliveries/mill_results — the "did what left the field match what the
 -- mill paid for" check design.md calls for). security_invoker for the same
--- reason as 0011 §7.
+-- reason as 0013 §7.
 -- ============================================================================
 
 create view public.delivery_details

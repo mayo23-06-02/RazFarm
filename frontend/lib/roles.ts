@@ -20,11 +20,11 @@ export const JOURNAL_POSTER_ROLES: MemberRole[] = ["chairman", "treasurer"];
 export const INVENTORY_VIEWER_ROLES: MemberRole[] = ["chairman", "treasurer", "accountant", "supervisor"];
 export const INVENTORY_MANAGER_ROLES: MemberRole[] = ["supervisor", "accountant"];
 
-// Module B (supabase/migrations/0011_cane_production_fields.sql §3).
+// Module B (supabase/migrations/0013_cane_production_fields.sql §3).
 export const FIELD_VIEWER_ROLES: MemberRole[] = ["chairman", "treasurer", "accountant", "supervisor"];
 export const FIELD_MANAGER_ROLES: MemberRole[] = ["chairman", "supervisor"];
 
-// Module C (supabase/migrations/0012_mill_deliveries.sql §3). Supervisor
+// Module C (supabase/migrations/0014_mill_deliveries.sql §3). Supervisor
 // dispatches loads from the field; capturing what the mill paid for and
 // reconciling it is the accountant/treasurer's job (D.2 mill reconciliation).
 export const DELIVERY_VIEWER_ROLES: MemberRole[] = ["chairman", "treasurer", "accountant", "supervisor"];
