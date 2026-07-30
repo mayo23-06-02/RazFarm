@@ -43,7 +43,7 @@ begin
 
     insert into auth.users (
       instance_id, id, aud, role, email, encrypted_password,
-      email_confirmed_at, confirmed_at, last_sign_in_at,
+      email_confirmed_at, last_sign_in_at,
       raw_app_meta_data, raw_user_meta_data,
       created_at, updated_at,
       confirmation_token, email_change, email_change_token_new, recovery_token
@@ -51,7 +51,7 @@ begin
       '00000000-0000-0000-0000-000000000000',
       v_user_id, 'authenticated', 'authenticated', v_persona.email,
       crypt(v_persona.password, gen_salt('bf')),
-      now(), now(), now(),
+      now(), now(),
       '{"provider":"email","providers":["email"]}'::jsonb,
       jsonb_build_object('full_name', v_persona.full_name),
       now(), now(),
