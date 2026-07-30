@@ -53,7 +53,7 @@ function LogoMark({ dark }: { dark?: boolean }) {
       >
         C
       </span>
-      Cane &amp; Ledger
+      RazFarm
     </Link>
   );
 }

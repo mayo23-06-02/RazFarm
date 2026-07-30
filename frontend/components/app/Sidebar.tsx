@@ -18,6 +18,7 @@ import {
 import { NavItem } from "./NavItem";
 import { TenantSwitcher, type Tenant } from "./TenantSwitcher";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { BsFlower1 } from "react-icons/bs";
 
 interface NavGroup {
   label: string;
@@ -82,9 +83,9 @@ export function Sidebar({ className, tenants = DEMO_TENANTS, activeTenant = DEMO
     <aside className={`flex h-full w-[248px] shrink-0 flex-col border-r border-paper-200 bg-paper-0 ${className ?? ""}`}>
       <div className="flex items-center gap-2 px-5 py-5">
         <span className="flex size-8 items-center justify-center rounded-ctrl bg-brand-500 font-display text-sm font-bold text-white">
-          C
+          <BsFlower1 />
         </span>
-        <span className="font-display text-base font-semibold text-ink-900">Cane &amp; Ledger</span>
+        <span className="font-display text-base font-semibold text-ink-900">RazFarm</span>
       </div>
       <nav className="flex-1 space-y-5 overflow-y-auto px-3">
         {NAV_GROUPS.map((group) => (

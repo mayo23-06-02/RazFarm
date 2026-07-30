@@ -227,7 +227,7 @@ export function ReportsSection({ tenantId }: ReportsSectionProps) {
 
   const handleExportPdf = () => {
     exportReportPdf({
-      title: `Cane & Ledger — ${REPORT_OPTIONS.find((o) => o.value === report)!.label}`,
+      title: `RazFarm — ${REPORT_OPTIONS.find((o) => o.value === report)!.label}`,
       subtitle: reportDescription,
       sections: exportSections,
       fileNameBase: exportFileNameBase,

@@ -7,7 +7,7 @@
 
 ## 1. Design Direction
 
-**Identity:** "Cane & Ledger" — the precision of an accounting ledger rooted in the green of a growing cane field. Light, card-based, data-dense but calm. Deep cane-green (`#2E7D32`) is the brand's voice: used with discipline for primary actions, active states, and key figures — never as decoration or large background fills.
+**Identity:** "RazFarm" — the precision of an accounting ledger rooted in the green of a growing cane field. Light, card-based, data-dense but calm. Deep cane-green (`#2E7D32`) is the brand's voice: used with discipline for primary actions, active states, and key figures — never as decoration or large background fills.
 
 **Principles**
 1. **Green is a verb.** `#2E7D32` appears where the user acts or must look: primary buttons, active nav, positive money, brand marks. If a screen has more than ~4 green elements, remove some.

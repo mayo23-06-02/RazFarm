@@ -64,7 +64,7 @@ export function DirectionSection() {
   return (
     <Section
       id="direction"
-      title="Design Direction — Cane & Ledger"
+      title="Design Direction — RazFarm"
       description="The precision of an accounting ledger, rooted in the green of a growing cane field. Light, card-based, data-dense but calm. Deep cane-green is the brand's voice — used with discipline, never as decoration."
     >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

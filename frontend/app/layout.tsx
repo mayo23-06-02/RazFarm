@@ -22,7 +22,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cane & Ledger — FMS Design System",
+  title: "RazFarm — FMS Design System",
   description: "Sugarcane Farm Management System design system and component library.",
 };
 

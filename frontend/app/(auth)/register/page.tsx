@@ -59,7 +59,7 @@ export default function RegisterPage() {
   return (
     <div>
       <h1 className="font-display text-3xl font-bold text-ink-900">Create your account</h1>
-      <p className="mt-2 text-sm text-ink-500">Set up your association on Cane &amp; Ledger.</p>
+      <p className="mt-2 text-sm text-ink-500">Set up your association on RazFarm.</p>
 
       <form className="mt-8 space-y-5" onSubmit={handleSubmit(onSubmit)} noValidate>
         <div>

@@ -48,11 +48,11 @@ function VerifyForm() {
 
       if (flow === "signup") {
         await completeRegistration();
-        addToast({ variant: "field", message: "Phone verified. Welcome to Cane & Ledger." });
+        addToast({ variant: "field", message: "Phone verified. Welcome to RazFarm." });
         router.push("/dashboard");
       } else if (flow === "invite") {
         await completeInviteAcceptance(inviteToken);
-        addToast({ variant: "field", message: "Account activated. Welcome to Cane & Ledger." });
+        addToast({ variant: "field", message: "Account activated. Welcome to RazFarm." });
         router.push("/dashboard");
       } else {
         addToast({ variant: "field", message: "Code verified. Choose a new password." });
