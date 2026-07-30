@@ -4,10 +4,10 @@ Reference credentials for manual/QA testing across each role in `member_role`
 (`supabase/migrations/0001_module_a_tenant_access.sql`). All personas belong
 to the same test tenant.
 
-These are **not yet provisioned** — no `SUPABASE_SERVICE_ROLE_KEY` was available
-to create pre-confirmed auth users directly, and the app's sign-up flow
-requires SMS/email OTP verification, so accounts must be created through the
-UI (register + invite) or via the Supabase Dashboard.
+Provision them by running `supabase/seed_personas.sql` in the Supabase SQL
+editor (as postgres) — it creates a dedicated "RazFarm Test Co-op" tenant and
+pre-confirms all six accounts so they can sign in immediately, no SMS/email
+OTP step needed.
 
 | Role | Email | Password |
 |---|---|---|
@@ -20,13 +20,12 @@ UI (register + invite) or via the Supabase Dashboard.
 
 ## How to provision
 
-1. Register the **Chairman** first via `/register` (creates the tenant through
-   `register_association`) — chairman is always the founding member.
-2. Sign in as Chairman and invite the other five roles from the Team page
-   (`invites` table / `accept_invite` flow), using the emails above.
-3. Each invited persona completes sign-up + OTP verification with the
-   password listed above.
+Run `supabase/seed_personas.sql` once against your project. Re-running it
+will fail on unique constraints (`tenants.slug`, `auth.users.email`) rather
+than duplicating rows — drop the "RazFarm Test Co-op" tenant and its users
+first if you need to reseed.
 
-To skip OTP entirely, create the users via Supabase Dashboard → Authentication
-→ Users → "Add user" (mark email confirmed), then insert a matching row into
-`public.memberships` for the test tenant with the corresponding `role`.
+Alternative (no direct DB access): register the **Chairman** via `/register`
+first (creates the tenant through `register_association`), then sign in as
+Chairman and invite the other five roles from the Team page. Each invited
+persona completes sign-up + OTP verification with the password listed above.

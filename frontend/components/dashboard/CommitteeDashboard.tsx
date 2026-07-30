@@ -1,3 +1,5 @@
+"use client"
+
 import { TbCash, TbCircleCheck, TbTruck, TbUsers } from "react-icons/tb";
 import { KpiRow, StatCard } from "@/components/ui/StatCard";
 import { ChartCard } from "@/components/ui/ChartCard";
