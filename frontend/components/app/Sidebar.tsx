@@ -31,9 +31,9 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Production",
     items: [
-      { icon: <TbPlant2 />, label: "Fields" },
-      { icon: <TbTruck />, label: "Deliveries", badge: 3 },
-      { icon: <TbBuildingFactory2 />, label: "Mill" },
+      { icon: <TbPlant2 />, label: "Fields", href: "/fields" },
+      { icon: <TbTruck />, label: "Deliveries", href: "/mill/deliveries" },
+      { icon: <TbBuildingFactory2 />, label: "Mill", href: "/mill" },
     ],
   },
   {
