@@ -48,6 +48,17 @@ export type StockMovementType = "receipt" | "issue" | "adjustment";
 export type PurchaseOrderStatus = "draft" | "issued" | "received" | "billed" | "cancelled";
 export type SupplierBillStatus = "open" | "paid";
 
+// Module B: Cane Production & Field Management (supabase/migrations/0013_cane_production_fields.sql)
+export type IrrigationType = "furrow" | "sprinkler" | "drip" | "rainfed";
+export type FieldStatus = "active" | "fallow" | "harvesting" | "replanting" | "retired";
+export type CropCycleType = "plant" | "ratoon";
+export type CropCycleStatus = "growing" | "ready_to_harvest" | "harvesting" | "harvested" | "ploughed_out";
+export type FieldActivityType = "land_prep" | "planting" | "fertilizer" | "herbicide" | "pesticide" | "ripener" | "irrigation" | "other";
+export type HarvestPlanStatus = "planned" | "burn_scheduled" | "cutting" | "completed" | "cancelled";
+
+// Module C: Mill Deliveries & Sucrose Tracking (supabase/migrations/0014_mill_deliveries.sql)
+export type DeliveryStatus = "dispatched" | "result_captured" | "reconciled";
+
 export interface Database {
   public: {
     Tables: {
@@ -79,6 +90,7 @@ export interface Database {
           vat_registered: boolean;
           logo_path: string | null;
           currency: "SZL";
+          season_quota_tonnes: number | null;
           updated_at: string;
         };
         Insert: {
@@ -88,6 +100,7 @@ export interface Database {
           vat_registered?: boolean;
           logo_path?: string | null;
           currency?: "SZL";
+          season_quota_tonnes?: number | null;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["tenant_settings"]["Insert"]>;
@@ -1101,8 +1114,371 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["audit_log"]["Insert"]>;
         Relationships: [];
       };
+      fields: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          code: string;
+          member_id: string | null;
+          hectares: number;
+          variety: string | null;
+          irrigation_type: IrrigationType;
+          gps_lat: number | null;
+          gps_lng: number | null;
+          boundary_geojson: Record<string, unknown> | null;
+          soil_notes: string | null;
+          status: FieldStatus;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          code: string;
+          member_id?: string | null;
+          hectares: number;
+          variety?: string | null;
+          irrigation_type?: IrrigationType;
+          gps_lat?: number | null;
+          gps_lng?: number | null;
+          boundary_geojson?: Record<string, unknown> | null;
+          soil_notes?: string | null;
+          status?: FieldStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["fields"]["Insert"]>;
+        Relationships: [];
+      };
+      crop_cycles: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          field_id: string;
+          cycle_type: CropCycleType;
+          ratoon_number: number;
+          status: CropCycleStatus;
+          planted_date: string;
+          expected_harvest_date: string | null;
+          ploughed_out_date: string | null;
+          area_hectares: number;
+          yield_tonnes: number;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          field_id: string;
+          cycle_type: CropCycleType;
+          ratoon_number?: number;
+          status?: CropCycleStatus;
+          planted_date: string;
+          expected_harvest_date?: string | null;
+          ploughed_out_date?: string | null;
+          area_hectares: number;
+          yield_tonnes?: number;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["crop_cycles"]["Insert"]>;
+        Relationships: [];
+      };
+      field_activities: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          field_id: string;
+          crop_cycle_id: string | null;
+          activity_type: FieldActivityType;
+          activity_date: string;
+          product: string | null;
+          rate: number | null;
+          rate_unit: string | null;
+          cost: number;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          field_id: string;
+          crop_cycle_id?: string | null;
+          activity_type: FieldActivityType;
+          activity_date?: string;
+          product?: string | null;
+          rate?: number | null;
+          rate_unit?: string | null;
+          cost?: number;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["field_activities"]["Insert"]>;
+        Relationships: [];
+      };
+      harvest_plans: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          field_id: string;
+          crop_cycle_id: string;
+          cutting_date_planned: string | null;
+          burn_permit_ref: string | null;
+          burn_date: string | null;
+          cutting_contractor: string | null;
+          status: HarvestPlanStatus;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          field_id: string;
+          crop_cycle_id: string;
+          cutting_date_planned?: string | null;
+          burn_permit_ref?: string | null;
+          burn_date?: string | null;
+          cutting_contractor?: string | null;
+          status?: HarvestPlanStatus;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["harvest_plans"]["Insert"]>;
+        Relationships: [];
+      };
+      harvest_captures: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          field_id: string;
+          crop_cycle_id: string;
+          harvest_plan_id: string | null;
+          capture_date: string;
+          tonnes_cut: number;
+          cutter_team: string | null;
+          field_edge_stock_tonnes: number;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          field_id: string;
+          crop_cycle_id: string;
+          harvest_plan_id?: string | null;
+          capture_date?: string;
+          tonnes_cut: number;
+          cutter_team?: string | null;
+          field_edge_stock_tonnes?: number;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["harvest_captures"]["Insert"]>;
+        Relationships: [];
+      };
+      field_photos: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          field_id: string;
+          activity_id: string | null;
+          harvest_capture_id: string | null;
+          path: string;
+          caption: string | null;
+          taken_at: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          field_id: string;
+          activity_id?: string | null;
+          harvest_capture_id?: string | null;
+          path: string;
+          caption?: string | null;
+          taken_at?: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["field_photos"]["Insert"]>;
+        Relationships: [];
+      };
+      deliveries: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          field_id: string;
+          crop_cycle_id: string | null;
+          delivery_no: string;
+          delivery_date: string;
+          haulier: string | null;
+          vehicle_reg: string | null;
+          tonnes_loaded: number;
+          mill: MillName;
+          status: DeliveryStatus;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          field_id: string;
+          crop_cycle_id?: string | null;
+          delivery_no: string;
+          delivery_date?: string;
+          haulier?: string | null;
+          vehicle_reg?: string | null;
+          tonnes_loaded: number;
+          mill: MillName;
+          status?: DeliveryStatus;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["deliveries"]["Insert"]>;
+        Relationships: [];
+      };
+      mill_results: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          delivery_id: string;
+          tonnes_accepted: number;
+          sucrose_pct: number;
+          rv_value: number | null;
+          source: "manual" | "import";
+          notes: string | null;
+          captured_by: string | null;
+          captured_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          delivery_id: string;
+          tonnes_accepted: number;
+          sucrose_pct: number;
+          rv_value?: number | null;
+          source?: "manual" | "import";
+          notes?: string | null;
+          captured_by?: string | null;
+          captured_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["mill_results"]["Insert"]>;
+        Relationships: [];
+      };
     };
-    Views: Record<string, never>;
+    Views: {
+      crop_cycle_yields: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          field_id: string;
+          cycle_type: CropCycleType;
+          ratoon_number: number;
+          status: CropCycleStatus;
+          planted_date: string;
+          expected_harvest_date: string | null;
+          ploughed_out_date: string | null;
+          area_hectares: number;
+          yield_tonnes: number;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+          field_tenant_id: string;
+          field_code: string;
+          field_hectares: number;
+          tonnes_per_ha: number | null;
+        };
+        Relationships: [];
+      };
+      ratoon_decline_curve: {
+        Row: {
+          tenant_id: string;
+          field_id: string;
+          field_code: string;
+          crop_cycle_id: string;
+          cycle_type: CropCycleType;
+          ratoon_number: number;
+          planted_date: string;
+          ploughed_out_date: string | null;
+          tonnes_per_ha: number | null;
+          prev_tonnes_per_ha: number | null;
+          pct_change_vs_prev: number | null;
+        };
+        Relationships: [];
+      };
+      field_replant_recommendations: {
+        Row: {
+          tenant_id: string;
+          field_id: string;
+          field_code: string;
+          latest_ratoon_number: number;
+          latest_tonnes_per_ha: number | null;
+          plant_tonnes_per_ha: number | null;
+          reason: string | null;
+        };
+        Relationships: [];
+      };
+      delivery_details: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          field_id: string;
+          field_code: string;
+          field_variety: string | null;
+          crop_cycle_id: string | null;
+          delivery_no: string;
+          delivery_date: string;
+          haulier: string | null;
+          vehicle_reg: string | null;
+          tonnes_loaded: number;
+          mill: MillName;
+          status: DeliveryStatus;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          mill_result_id: string | null;
+          tonnes_accepted: number | null;
+          sucrose_pct: number | null;
+          rv_value: number | null;
+          mill_result_source: "manual" | "import" | null;
+          mill_result_notes: string | null;
+          mill_result_captured_by: string | null;
+          mill_result_captured_at: string | null;
+        };
+        Relationships: [];
+      };
+      field_delivery_reconciliation: {
+        Row: {
+          tenant_id: string;
+          field_id: string;
+          field_code: string;
+          tonnes_cut: number;
+          tonnes_loaded: number;
+          tonnes_accepted: number;
+          variance_tonnes: number;
+          recovery_pct: number | null;
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       register_association: {
         Args: { p_name: string; p_slug: string; p_mill: MillName };
@@ -1260,6 +1636,40 @@ export interface Database {
         Args: { p_bill_id: string; p_payment_date: string; p_payment_account_id: string };
         Returns: Database["public"]["Tables"]["supplier_bills"]["Row"];
       };
+      start_crop_cycle: {
+        Args: {
+          p_field_id: string;
+          p_cycle_type: CropCycleType;
+          p_ratoon_number: number;
+          p_planted_date: string;
+          p_expected_harvest_date: string | null;
+        };
+        Returns: Database["public"]["Tables"]["crop_cycles"]["Row"];
+      };
+      plough_out_and_replant: {
+        Args: {
+          p_crop_cycle_id: string;
+          p_ploughed_out_date: string;
+          p_new_planted_date: string;
+          p_new_variety: string | null;
+          p_new_irrigation_type: IrrigationType | null;
+        };
+        Returns: Database["public"]["Tables"]["crop_cycles"]["Row"];
+      };
+      record_mill_result: {
+        Args: {
+          p_delivery_id: string;
+          p_tonnes_accepted: number;
+          p_sucrose_pct: number;
+          p_rv_value: number | null;
+          p_notes: string | null;
+        };
+        Returns: Database["public"]["Tables"]["mill_results"]["Row"];
+      };
+      reconcile_delivery: {
+        Args: { p_delivery_id: string };
+        Returns: Database["public"]["Tables"]["deliveries"]["Row"];
+      };
     };
     Enums: {
       member_role: MemberRole;
@@ -1286,6 +1696,13 @@ export interface Database {
       stock_movement_type: StockMovementType;
       purchase_order_status: PurchaseOrderStatus;
       supplier_bill_status: SupplierBillStatus;
+      irrigation_type: IrrigationType;
+      field_status: FieldStatus;
+      crop_cycle_type: CropCycleType;
+      crop_cycle_status: CropCycleStatus;
+      field_activity_type: FieldActivityType;
+      harvest_plan_status: HarvestPlanStatus;
+      delivery_status: DeliveryStatus;
     };
   };
 }
