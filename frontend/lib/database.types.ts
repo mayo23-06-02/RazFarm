@@ -59,6 +59,15 @@ export type HarvestPlanStatus = "planned" | "burn_scheduled" | "cutting" | "comp
 // Module C: Mill Deliveries & Sucrose Tracking (supabase/migrations/0014_mill_deliveries.sql)
 export type DeliveryStatus = "dispatched" | "result_captured" | "reconciled";
 
+// Staff Management: employees & contractors (supabase/migrations/0015_staff_management.sql)
+export type StaffEmploymentType = "permanent" | "casual";
+export type StaffPayFrequency = "monthly" | "weekly";
+export type StaffStatus = "active" | "suspended" | "terminated";
+export type ContractorServiceType = "cutting" | "haulage" | "spraying" | "other";
+export type ContractorRateBasis = "per_tonne" | "per_hectare" | "per_job" | "fixed";
+export type ContractorStatus = "active" | "inactive";
+export type ContractorJobStatus = "logged" | "billed" | "paid";
+
 export interface Database {
   public: {
     Tables: {
@@ -1382,6 +1391,132 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["mill_results"]["Insert"]>;
         Relationships: [];
       };
+      staff_employees: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          staff_no: string;
+          full_name: string;
+          national_id: string | null;
+          phone: string | null;
+          email: string | null;
+          position: string;
+          employment_type: StaffEmploymentType;
+          start_date: string;
+          end_date: string | null;
+          bank_account: Record<string, unknown> | null;
+          pay_rate: number;
+          pay_frequency: StaffPayFrequency;
+          paye_number: string | null;
+          enpf_number: string | null;
+          status: StaffStatus;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          staff_no: string;
+          full_name: string;
+          national_id?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          position: string;
+          employment_type?: StaffEmploymentType;
+          start_date?: string;
+          end_date?: string | null;
+          bank_account?: Record<string, unknown> | null;
+          pay_rate: number;
+          pay_frequency?: StaffPayFrequency;
+          paye_number?: string | null;
+          enpf_number?: string | null;
+          status?: StaffStatus;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["staff_employees"]["Insert"]>;
+        Relationships: [];
+      };
+      contractors: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          contractor_no: string;
+          business_name: string;
+          contact_name: string | null;
+          phone: string | null;
+          email: string | null;
+          service_type: ContractorServiceType;
+          national_id_or_reg_no: string | null;
+          bank_account: Record<string, unknown> | null;
+          rate_basis: ContractorRateBasis;
+          rate_amount: number;
+          withholding_applicable: boolean;
+          status: ContractorStatus;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          contractor_no: string;
+          business_name: string;
+          contact_name?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          service_type: ContractorServiceType;
+          national_id_or_reg_no?: string | null;
+          bank_account?: Record<string, unknown> | null;
+          rate_basis: ContractorRateBasis;
+          rate_amount: number;
+          withholding_applicable?: boolean;
+          status?: ContractorStatus;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["contractors"]["Insert"]>;
+        Relationships: [];
+      };
+      contractor_jobs: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          contractor_id: string;
+          field_id: string | null;
+          service_type: ContractorServiceType;
+          job_date: string;
+          quantity: number;
+          computed_amount: number;
+          is_override: boolean;
+          override_reason: string | null;
+          status: ContractorJobStatus;
+          linked_bill_id: string | null;
+          recorded_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          contractor_id: string;
+          field_id?: string | null;
+          service_type: ContractorServiceType;
+          job_date?: string;
+          quantity: number;
+          computed_amount: number;
+          is_override?: boolean;
+          override_reason?: string | null;
+          status?: ContractorJobStatus;
+          linked_bill_id?: string | null;
+          recorded_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["contractor_jobs"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       crop_cycle_yields: {
@@ -1475,6 +1610,51 @@ export interface Database {
           tonnes_accepted: number;
           variance_tonnes: number;
           recovery_pct: number | null;
+        };
+        Relationships: [];
+      };
+      staff_employees_directory: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          staff_no: string;
+          full_name: string;
+          national_id: string | null;
+          phone: string | null;
+          email: string | null;
+          position: string;
+          employment_type: StaffEmploymentType;
+          start_date: string;
+          end_date: string | null;
+          pay_rate: number | null;
+          pay_frequency: StaffPayFrequency;
+          paye_number: string | null;
+          enpf_number: string | null;
+          status: StaffStatus;
+          bank_account: Record<string, unknown> | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Relationships: [];
+      };
+      contractors_directory: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          contractor_no: string;
+          business_name: string;
+          contact_name: string | null;
+          phone: string | null;
+          email: string | null;
+          service_type: ContractorServiceType;
+          national_id_or_reg_no: string | null;
+          rate_basis: ContractorRateBasis;
+          rate_amount: number;
+          withholding_applicable: boolean;
+          status: ContractorStatus;
+          bank_account: Record<string, unknown> | null;
+          created_at: string;
+          updated_at: string;
         };
         Relationships: [];
       };
@@ -1670,6 +1850,10 @@ export interface Database {
         Args: { p_delivery_id: string };
         Returns: Database["public"]["Tables"]["deliveries"]["Row"];
       };
+      reveal_bank_details: {
+        Args: { p_entity_type: "staff_employees" | "contractors"; p_entity_id: string };
+        Returns: Record<string, unknown>;
+      };
     };
     Enums: {
       member_role: MemberRole;
@@ -1703,6 +1887,13 @@ export interface Database {
       field_activity_type: FieldActivityType;
       harvest_plan_status: HarvestPlanStatus;
       delivery_status: DeliveryStatus;
+      staff_employment_type: StaffEmploymentType;
+      staff_pay_frequency: StaffPayFrequency;
+      staff_status: StaffStatus;
+      contractor_service_type: ContractorServiceType;
+      contractor_rate_basis: ContractorRateBasis;
+      contractor_status: ContractorStatus;
+      contractor_job_status: ContractorJobStatus;
     };
   };
 }

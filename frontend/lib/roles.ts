@@ -30,3 +30,15 @@ export const FIELD_MANAGER_ROLES: MemberRole[] = ["chairman", "supervisor"];
 export const DELIVERY_VIEWER_ROLES: MemberRole[] = ["chairman", "treasurer", "accountant", "supervisor"];
 export const DELIVERY_RECORDER_ROLES: MemberRole[] = ["chairman", "supervisor"];
 export const MILL_RECORDER_ROLES: MemberRole[] = ["chairman", "treasurer", "accountant"];
+
+// Staff Management (supabase/migrations/0015_staff_management.sql §3).
+// Employees are payroll data — no supervisor access at all. Contractors are
+// broader: supervisor views them (to pick one when logging a job) and logs
+// jobs, but doesn't manage the contractor record itself. Bank-detail reveal
+// is deliberately narrower than "manages the record" — secretary can edit a
+// staff/contractor row but can't reveal its bank account.
+export const STAFF_MANAGER_ROLES: MemberRole[] = ["chairman", "treasurer", "secretary"];
+export const STAFF_VIEWER_ROLES: MemberRole[] = ["chairman", "treasurer", "secretary", "accountant"];
+export const CONTRACTOR_VIEWER_ROLES: MemberRole[] = ["chairman", "treasurer", "secretary", "accountant", "supervisor"];
+export const CONTRACTOR_JOB_LOGGER_ROLES: MemberRole[] = ["chairman", "treasurer", "secretary", "supervisor"];
+export const BANK_DETAIL_REVEAL_ROLES: MemberRole[] = ["chairman", "treasurer", "accountant"];
