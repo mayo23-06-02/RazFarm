@@ -79,6 +79,11 @@ export interface SidebarProps {
 export function Sidebar({ className, tenants = DEMO_TENANTS, activeTenant = DEMO_TENANTS[0] }: SidebarProps) {
   const pathname = usePathname();
 
+  const bestMatchHref = NAV_GROUPS.flatMap((group) => group.items)
+    .map((item) => item.href)
+    .filter((href): href is string => !!href && (pathname === href || pathname.startsWith(`${href}/`)))
+    .sort((a, b) => b.length - a.length)[0];
+
   return (
     <aside className={`flex h-full w-[248px] shrink-0 flex-col border-r border-paper-200 bg-paper-0 ${className ?? ""}`}>
       <div className="flex items-center gap-2 px-5 py-5">
@@ -92,7 +97,7 @@ export function Sidebar({ className, tenants = DEMO_TENANTS, activeTenant = DEMO
           <div key={group.label} className="space-y-1">
             <SectionHeading className="mb-2 px-3">{group.label}</SectionHeading>
             {group.items.map((item) => {
-              const active = item.href ? pathname === item.href || pathname.startsWith(`${item.href}/`) : item.active;
+              const active = item.href ? item.href === bestMatchHref : item.active;
               return <NavItem key={item.label} {...item} active={active} />;
             })}
           </div>
