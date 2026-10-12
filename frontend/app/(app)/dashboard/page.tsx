@@ -13,7 +13,8 @@ import { cn } from "@/lib/cn";
 import { CommitteeDashboard } from "@/components/dashboard/CommitteeDashboard";
 import { AccountantDashboard } from "@/components/dashboard/AccountantDashboard";
 import { SupervisorDashboard } from "@/components/dashboard/SupervisorDashboard";
-import { getAccountantDashboardData, getCommitteeDashboardData, getSupervisorDashboardData } from "@/lib/dashboard/queries";
+import { MemberDashboard } from "@/components/dashboard/MemberDashboard";
+import { getAccountantDashboardData, getCommitteeDashboardData, getSupervisorDashboardData, getMemberDashboardData } from "@/lib/dashboard/queries";
 import type { MemberRole } from "@/lib/database.types";
 
 type DashboardVariant = "committee" | "accountant" | "supervisor" | "member";
@@ -87,7 +88,7 @@ export default async function DashboardPage() {
 
   // New association with nothing captured yet — replace the whole content
   // grid with a guided setup empty state rather than a wall of empty cards.
-  if (!memberCount && !fieldCount) {
+  if (variant !== "member" && !memberCount && !fieldCount) {
     return (
       <div className="flex flex-col gap-6">
         {header}
@@ -139,16 +140,11 @@ export default async function DashboardPage() {
     );
   }
 
-  // Members (no staff role) get a simpler, dedicated view in a later module —
-  // this route stays staff-shaped, so a member landing here by a stale link
-  // or mistyped URL sees a holding message instead of empty staff cards.
+  const data = await getMemberDashboardData(supabase, tenantId, session.user.id);
   return (
     <div className="flex flex-col gap-6">
       {header}
-      <EmptyState
-        title="Your dashboard is coming soon"
-        body="The member view — your deliveries, estimated payout and notices — lands in a later module. Check with your association's committee if you were expecting a staff dashboard."
-      />
+      <MemberDashboard data={data} />
     </div>
   );
 }

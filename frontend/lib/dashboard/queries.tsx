@@ -495,3 +495,136 @@ export async function getSupervisorDashboardData(supabase: Supabase, tenantId: s
     activity,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Member (no staff role) — own fields, deliveries, statement and notices.
+// Relies on the *_select_own policies in 0016_member_dashboard_access.sql.
+// ---------------------------------------------------------------------------
+
+export interface MemberDeliveryRow {
+  id: string;
+  deliveryNo: string;
+  deliveryDate: string;
+  fieldCode: string;
+  tonnesLoaded: number;
+  tonnesAccepted: number | null;
+  sucrosePct: number | null;
+  status: string;
+}
+
+export interface MemberNotice {
+  id: string;
+  title: string;
+  body: string;
+  publishedAt: string;
+}
+
+export interface MemberDashboardData {
+  linked: boolean;
+  memberNo: string | null;
+  fieldCount: number;
+  hectares: number;
+  seasonTonnesDelivered: number;
+  seasonTonnesAccepted: number;
+  avgSucrosePct: number | null;
+  accountBalance: number;
+  lastPayout: { amount: number; date: string } | null;
+  deliveries: MemberDeliveryRow[];
+  notices: MemberNotice[];
+}
+
+export async function getMemberDashboardData(supabase: Supabase, tenantId: string, userId: string): Promise<MemberDashboardData> {
+  const [{ data: member }, { data: noticeRows }, { seasonStart, seasonEnd }] = await Promise.all([
+    supabase.from("members").select("id, member_no").eq("tenant_id", tenantId).eq("user_id", userId).maybeSingle(),
+    supabase
+      .from("announcements")
+      .select("id, title, body, published_at")
+      .eq("tenant_id", tenantId)
+      .not("published_at", "is", null)
+      .order("published_at", { ascending: false })
+      .limit(5),
+    getSeasonWindow(supabase, tenantId),
+  ]);
+
+  const notices: MemberNotice[] = (noticeRows ?? []).map((n) => ({ id: n.id, title: n.title, body: n.body, publishedAt: n.published_at! }));
+
+  if (!member) {
+    return {
+      linked: false,
+      memberNo: null,
+      fieldCount: 0,
+      hectares: 0,
+      seasonTonnesDelivered: 0,
+      seasonTonnesAccepted: 0,
+      avgSucrosePct: null,
+      accountBalance: 0,
+      lastPayout: null,
+      deliveries: [],
+      notices,
+    };
+  }
+
+  const [{ data: fields }, { data: entries }] = await Promise.all([
+    supabase.from("fields").select("id, code, hectares").eq("tenant_id", tenantId).eq("member_id", member.id),
+    supabase
+      .from("member_account_entries")
+      .select("amount, kind, entry_date")
+      .eq("tenant_id", tenantId)
+      .eq("member_id", member.id)
+      .order("entry_date", { ascending: false }),
+  ]);
+
+  const fieldList = fields ?? [];
+  const fieldCodes = Object.fromEntries(fieldList.map((f) => [f.id, f.code]));
+
+  const { data: deliveryRows } = fieldList.length
+    ? await supabase
+        .from("deliveries")
+        .select("id, delivery_no, delivery_date, field_id, tonnes_loaded, status, mill_results(tonnes_accepted, sucrose_pct)")
+        .eq("tenant_id", tenantId)
+        .in("field_id", fieldList.map((f) => f.id))
+        .gte("delivery_date", seasonStart)
+        .lte("delivery_date", seasonEnd)
+        .order("delivery_date", { ascending: false })
+    : { data: [] };
+
+  type Result = { tonnes_accepted: number; sucrose_pct: number };
+  const deliveries: MemberDeliveryRow[] = (deliveryRows ?? []).map((d) => {
+    const raw = (d as unknown as { mill_results: Result | Result[] | null }).mill_results;
+    const result = Array.isArray(raw) ? raw[0] : raw;
+    return {
+      id: d.id,
+      deliveryNo: d.delivery_no,
+      deliveryDate: d.delivery_date,
+      fieldCode: fieldCodes[d.field_id] ?? "—",
+      tonnesLoaded: Number(d.tonnes_loaded),
+      tonnesAccepted: result ? Number(result.tonnes_accepted) : null,
+      sucrosePct: result ? Number(result.sucrose_pct) : null,
+      status: d.status,
+    };
+  });
+
+  const withResult = deliveries.filter((d) => d.tonnesAccepted !== null);
+  const seasonTonnesAccepted = withResult.reduce((s, d) => s + (d.tonnesAccepted ?? 0), 0);
+  // Tonnage-weighted, matching how mills report average sucrose.
+  const avgSucrosePct = seasonTonnesAccepted > 0
+    ? withResult.reduce((s, d) => s + (d.tonnesAccepted ?? 0) * (d.sucrosePct ?? 0), 0) / seasonTonnesAccepted
+    : null;
+
+  const entryList = entries ?? [];
+  const lastPayoutEntry = entryList.find((e) => e.kind === "payout");
+
+  return {
+    linked: true,
+    memberNo: member.member_no,
+    fieldCount: fieldList.length,
+    hectares: fieldList.reduce((s, f) => s + Number(f.hectares), 0),
+    seasonTonnesDelivered: deliveries.reduce((s, d) => s + d.tonnesLoaded, 0),
+    seasonTonnesAccepted,
+    avgSucrosePct,
+    accountBalance: entryList.reduce((s, e) => s + Number(e.amount), 0),
+    lastPayout: lastPayoutEntry ? { amount: Number(lastPayoutEntry.amount), date: lastPayoutEntry.entry_date } : null,
+    deliveries: deliveries.slice(0, 10),
+    notices,
+  };
+}
