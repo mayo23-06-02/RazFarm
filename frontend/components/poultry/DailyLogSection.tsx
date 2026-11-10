@@ -12,10 +12,13 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { createClient } from "@/lib/supabase/client";
+import { HealthTaskList } from "@/components/poultry/HealthTaskList";
 import type { Database } from "@/lib/database.types";
 
 type Summary = Database["public"]["Views"]["poultry_batch_summary"]["Row"];
 type FeedItem = { id: string; name: string; unit: string; quantity_on_hand: number; unit_weight_kg: number | null };
+type Task = Database["public"]["Tables"]["poultry_batch_tasks"]["Row"];
+type Vaccine = { id: string; name: string; unit: string; quantity_on_hand: number };
 
 function localISODate() {
   const d = new Date();
@@ -29,10 +32,14 @@ function n(value: number | string | null | undefined) {
 export function DailyLogSection({
   batches,
   feedItems,
+  tasks,
+  vaccines,
   canManage,
 }: {
   batches: Summary[];
   feedItems: FeedItem[];
+  tasks: Task[];
+  vaccines: Vaccine[];
   canManage: boolean;
 }) {
   const router = useRouter();
@@ -110,7 +117,14 @@ export function DailyLogSection({
   };
 
   if (!canManage) {
-    return <EmptyState title="View only" body="The farm owner or a supervisor records the daily log." />;
+    return (
+      <div className="flex flex-col gap-4">
+        <EmptyState title="View only" body="The farm owner or a supervisor records the daily log." />
+        <Card title="Vaccinations">
+          <HealthTaskList tasks={tasks} vaccines={vaccines} canManage={false} />
+        </Card>
+      </div>
+    );
   }
 
   if (active.length === 0) {
@@ -181,6 +195,12 @@ export function DailyLogSection({
           Save this day
         </Button>
       </div>
+      {batchId && (
+        <div className="mt-6 border-t border-paper-200 pt-4">
+          <h3 className="mb-2 font-display text-base font-semibold text-ink-900">Vaccinations</h3>
+          <HealthTaskList tasks={tasks.filter((t) => t.batch_id === batchId)} vaccines={vaccines} canManage={canManage} />
+        </div>
+      )}
     </Card>
   );
 }

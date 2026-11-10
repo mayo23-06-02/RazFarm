@@ -20,6 +20,7 @@ import { formatMoney } from "@/lib/formatMoney";
 import type { Database } from "@/lib/database.types";
 
 type Summary = Database["public"]["Views"]["poultry_batch_summary"]["Row"];
+type Task = Database["public"]["Tables"]["poultry_batch_tasks"]["Row"];
 type House = Database["public"]["Tables"]["poultry_houses"]["Row"];
 type Pen = Database["public"]["Tables"]["poultry_pens"]["Row"];
 
@@ -46,6 +47,7 @@ export function FlockSection({
   suppliers,
   accounts,
   birdCap,
+  tasks,
   canManage,
 }: {
   batches: Summary[];
@@ -54,6 +56,7 @@ export function FlockSection({
   suppliers: { id: string; name: string }[];
   accounts: { id: string; code: string; name: string }[];
   birdCap: number;
+  tasks: Task[];
   canManage: boolean;
 }) {
   const router = useRouter();
@@ -75,6 +78,9 @@ export function FlockSection({
 
   const active = batches.filter((b) => b.status === "active");
   const onFarm = active.reduce((sum, b) => sum + n(b.birds_alive), 0);
+  const today = localISODate();
+  const overdue = tasks.filter((t) => t.status === "pending" && t.due_on <= today);
+  const highMortality = active.filter((b) => n(b.mortality_pct) >= 5);
   const housePens = pens.filter((p) => p.house_id === houseId);
 
   const columns: DataTableColumn<Summary>[] = [
@@ -154,9 +160,20 @@ export function FlockSection({
           label="Running surplus"
           value={active.reduce((s, b) => s + n(b.surplus), 0)}
           formatValue={(v) => formatMoney(v, { withPrefix: true })}
-          info="Sales minus chick and feed cost. Unsold birds still carry cost."
+          info="Sales minus chicks, feed and any cost added on the batch."
         />
       </KpiRow>
+
+      {overdue.length > 0 && (
+        <p className="rounded-ctrl bg-danger-50 px-3 py-2 text-sm text-danger-600">
+          {overdue.length} vaccination{overdue.length === 1 ? "" : "s"} due or overdue. Open the batch or Today to mark them done.
+        </p>
+      )}
+      {highMortality.length > 0 && (
+        <p className="rounded-ctrl bg-harvest-50 px-3 py-2 text-sm text-harvest-500">
+          Mortality is 5% or more on {highMortality.map((b) => b.batch_no).join(", ")}.
+        </p>
+      )}
 
       {canManage && (
         <div className="flex justify-end">

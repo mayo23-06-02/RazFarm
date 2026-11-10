@@ -12,9 +12,10 @@ export default async function PoultryPage() {
   const canManage = await hasTenantRole(tenantId, POULTRY_MANAGER_ROLES);
   if (canManage) {
     await supabase.rpc("seed_poultry_accounts", { p_tenant_id: tenantId });
+    await supabase.rpc("seed_poultry_health_template", { p_tenant_id: tenantId });
   }
 
-  const [{ data: batches }, { data: houses }, { data: pens }, { data: suppliers }, { data: accounts }, { data: settings }] =
+  const [{ data: batches }, { data: houses }, { data: pens }, { data: suppliers }, { data: accounts }, { data: settings }, { data: tasks }] =
     await Promise.all([
       supabase.from("poultry_batch_summary").select("*").eq("tenant_id", tenantId).order("placed_on", { ascending: false }),
       supabase.from("poultry_houses").select("*").eq("tenant_id", tenantId).order("code"),
@@ -22,6 +23,7 @@ export default async function PoultryPage() {
       supabase.from("suppliers").select("id, name").eq("tenant_id", tenantId).order("name"),
       supabase.from("accounts").select("id, code, name").eq("tenant_id", tenantId).eq("is_active", true).order("code"),
       supabase.from("tenant_settings").select("poultry_bird_cap").eq("tenant_id", tenantId).maybeSingle(),
+      supabase.from("poultry_batch_tasks").select("*").eq("tenant_id", tenantId).eq("status", "pending"),
     ]);
 
   return (
@@ -42,6 +44,7 @@ export default async function PoultryPage() {
         suppliers={suppliers ?? []}
         accounts={accounts ?? []}
         birdCap={settings?.poultry_bird_cap ?? 400}
+        tasks={tasks ?? []}
         canManage={canManage}
       />
     </div>

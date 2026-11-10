@@ -50,8 +50,9 @@ export type EnterpriseKind = "sugarcane_association" | "poultry_farm" | "mixed";
 export type PoultryHouseType = "brooder" | "growout" | "combined";
 export type PoultryHouseStatus = "active" | "inactive";
 export type PoultryBatchStatus = "active" | "closed";
-export type PoultryCostCategory = "chicks" | "feed";
-export type PoultryCostSource = "placement" | "daily_log";
+export type PoultryCostCategory = "chicks" | "feed" | "firewood" | "transport" | "labour" | "other" | "vaccine";
+export type PoultryCostSource = "placement" | "daily_log" | "manual" | "health";
+export type PoultryTaskStatus = "pending" | "done";
 export type InventoryItemCondition = "excellent" | "good" | "fair" | "poor" | "out_of_service";
 export type StockMovementType = "receipt" | "issue" | "adjustment";
 
@@ -1732,6 +1733,64 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["poultry_batch_costs"]["Insert"]>;
         Relationships: [];
       };
+      poultry_health_protocols: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          day_of_age: number;
+          name: string;
+          sort_order: number;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          day_of_age: number;
+          name: string;
+          sort_order?: number;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["poultry_health_protocols"]["Insert"]>;
+        Relationships: [];
+      };
+      poultry_batch_tasks: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          batch_id: string;
+          protocol_id: string | null;
+          name: string;
+          day_of_age: number;
+          due_on: string;
+          status: PoultryTaskStatus;
+          done_on: string | null;
+          inventory_item_id: string | null;
+          quantity: number | null;
+          stock_movement_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          batch_id: string;
+          protocol_id?: string | null;
+          name: string;
+          day_of_age: number;
+          due_on: string;
+          status?: PoultryTaskStatus;
+          done_on?: string | null;
+          inventory_item_id?: string | null;
+          quantity?: number | null;
+          stock_movement_id?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["poultry_batch_tasks"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       crop_cycle_yields: {
@@ -2150,6 +2209,25 @@ export interface Database {
         Args: { p_batch_id: string; p_birds_written_off: number; p_closed_on?: string };
         Returns: Database["public"]["Tables"]["poultry_batches"]["Row"];
       };
+      seed_poultry_health_template: {
+        Args: { p_tenant_id: string };
+        Returns: undefined;
+      };
+      add_poultry_batch_cost: {
+        Args: {
+          p_batch_id: string;
+          p_category: PoultryCostCategory;
+          p_cost_date: string;
+          p_amount: number;
+          p_note: string;
+          p_payment_account_id: string;
+        };
+        Returns: Database["public"]["Tables"]["poultry_batch_costs"]["Row"];
+      };
+      complete_poultry_task: {
+        Args: { p_task_id: string; p_item_id?: string | null; p_quantity?: number | null };
+        Returns: Database["public"]["Tables"]["poultry_batch_tasks"]["Row"];
+      };
     };
     Enums: {
       member_role: MemberRole;
@@ -2196,6 +2274,7 @@ export interface Database {
       poultry_batch_status: PoultryBatchStatus;
       poultry_cost_category: PoultryCostCategory;
       poultry_cost_source: PoultryCostSource;
+      poultry_task_status: PoultryTaskStatus;
     };
   };
 }

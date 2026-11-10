@@ -18,11 +18,21 @@ import { useToast } from "@/components/ui/Toast";
 import { createClient } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/formatDate";
 import { formatMoney } from "@/lib/formatMoney";
-import type { Database } from "@/lib/database.types";
+import { HealthTaskList } from "@/components/poultry/HealthTaskList";
+import type { Database, PoultryCostCategory } from "@/lib/database.types";
 
 type Summary = Database["public"]["Views"]["poultry_batch_summary"]["Row"];
 type Log = Database["public"]["Tables"]["poultry_daily_logs"]["Row"];
 type Sale = Database["public"]["Tables"]["poultry_sales"]["Row"];
+type Task = Database["public"]["Tables"]["poultry_batch_tasks"]["Row"];
+type Vaccine = { id: string; name: string; unit: string; quantity_on_hand: number };
+
+const MANUAL_COSTS: { value: PoultryCostCategory; label: string }[] = [
+  { value: "firewood", label: "Firewood" },
+  { value: "transport", label: "Transport" },
+  { value: "labour", label: "Labour" },
+  { value: "other", label: "Other" },
+];
 
 function n(value: number | string | null | undefined) {
   return Number(value ?? 0);
@@ -45,12 +55,16 @@ export function BatchDetailSection({
   logs,
   sales,
   accounts,
+  tasks,
+  vaccines,
   canManage,
 }: {
   batch: Summary;
   logs: Log[];
   sales: Sale[];
   accounts: { id: string; code: string; name: string }[];
+  tasks: Task[];
+  vaccines: Vaccine[];
   canManage: boolean;
 }) {
   const router = useRouter();
@@ -65,6 +79,11 @@ export function BatchDetailSection({
   const [accountId, setAccountId] = useState(accounts.find((a) => a.code === "1010")?.id ?? accounts[0]?.id ?? "");
   const [writeOff, setWriteOff] = useState<string | null>(null);
   const writeOffValue = writeOff ?? String(alive);
+  const [costCategory, setCostCategory] = useState<PoultryCostCategory>("firewood");
+  const [costAmount, setCostAmount] = useState(500);
+  const [costDate, setCostDate] = useState(localISODate());
+  const [costNote, setCostNote] = useState("Firewood");
+  const [costAccountId, setCostAccountId] = useState(accounts.find((a) => a.code === "1010")?.id ?? accounts[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -130,6 +149,27 @@ export function BatchDetailSection({
     router.refresh();
   };
 
+  const addCost = async () => {
+    setError(null);
+    setSaving(true);
+    const supabase = createClient();
+    const { error: rpcError } = await supabase.rpc("add_poultry_batch_cost", {
+      p_batch_id: batch.id,
+      p_category: costCategory,
+      p_cost_date: costDate,
+      p_amount: costAmount,
+      p_note: costNote.trim(),
+      p_payment_account_id: costAccountId,
+    });
+    setSaving(false);
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+    addToast({ variant: "field", message: "Cost added" });
+    router.refresh();
+  };
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -181,6 +221,52 @@ export function BatchDetailSection({
           Daily log
         </Link>
       </div>
+
+      <Card title="Vaccinations">
+        <HealthTaskList tasks={tasks} vaccines={vaccines} canManage={canManage && !closed} />
+      </Card>
+
+      {canManage && !closed && (
+        <Card title="Add a cost">
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-ink-500">Firewood is suggested at E500 for the brooding period. Change it if you paid something else.</p>
+            <FormRow label="What">
+              <Select
+                options={MANUAL_COSTS}
+                value={costCategory}
+                onChange={(v) => {
+                  const next = v as PoultryCostCategory;
+                  setCostCategory(next);
+                  if (next === "firewood") {
+                    setCostAmount(500);
+                    setCostNote("Firewood");
+                  }
+                }}
+              />
+            </FormRow>
+            <FormRow label="Amount">
+              <MoneyInput value={costAmount} onValueChange={setCostAmount} />
+            </FormRow>
+            <FormRow label="Date">
+              <Input type="date" value={costDate} max={localISODate()} onChange={(e) => setCostDate(e.target.value)} />
+            </FormRow>
+            <FormRow label="Note" required>
+              <Input value={costNote} onChange={(e) => setCostNote(e.target.value)} />
+            </FormRow>
+            <FormRow label="Paid from">
+              <Select
+                options={accounts.map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` }))}
+                value={costAccountId}
+                onChange={setCostAccountId}
+                placeholder="Cash or bank"
+              />
+            </FormRow>
+            <Button onClick={addCost} loading={saving}>
+              Add cost
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <Card title="Daily logs">
         <DataTable columns={logColumns} data={logs} rowKey={(l) => l.id} emptyTitle="No days logged" emptyBody="Deaths, culls and feed bags show up here." />

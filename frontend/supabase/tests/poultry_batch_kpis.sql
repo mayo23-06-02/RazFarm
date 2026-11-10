@@ -7,7 +7,8 @@ create extension if not exists pgcrypto;
 -- What it checks (200 placed, 3 deaths, 4 bags × 50 kg, 10 sold at E100,
 -- chick cost E1,600, feed at E80/bag):
 --   alive 187, mortality 1.5%, feed 200 kg, revenue E1,000,
---   cost E1,920, surplus E-920, stock on hand 6,
+--   cost E1,920 then E2,420 after E500 firewood, surplus E-1,420,
+--   stock on hand 6, three vaccination tasks, Newcastle on day 7,
 --   an oversized sale and a wrong close are rejected,
 --   closing writes off the birds still alive.
 
@@ -25,6 +26,9 @@ declare
   v_on_hand numeric;
   v_debit numeric;
   v_credit numeric;
+  v_due date;
+  v_task uuid;
+  v_task_count integer;
 begin
   insert into auth.users (
     instance_id, id, aud, role, email, encrypted_password,
@@ -78,6 +82,8 @@ begin
     true
   );
 
+  perform public.seed_poultry_health_template(v_tenant);
+
   v_batch := public.place_poultry_batch(
     v_house, current_date, 2, 200, 0, null, 1600, v_cash, null, null
   );
@@ -125,6 +131,39 @@ begin
   where je.tenant_id = v_tenant;
   if v_debit <> v_credit or v_debit <> 2920 then
     raise exception 'Expected balanced journals of 2920, got debit % credit %', v_debit, v_credit;
+  end if;
+
+  select count(*) into v_task_count from public.poultry_batch_tasks where batch_id = v_batch.id;
+  if v_task_count <> 3 then
+    raise exception 'Expected 3 vaccination tasks, got %', v_task_count;
+  end if;
+  select due_on into v_due from public.poultry_batch_tasks where batch_id = v_batch.id and name = 'Newcastle';
+  if v_due <> current_date + 7 then
+    raise exception 'Newcastle should be due on day 7, got %', v_due;
+  end if;
+  select due_on into v_due from public.poultry_batch_tasks where batch_id = v_batch.id and name = 'Gumboro';
+  if v_due <> current_date + 14 then
+    raise exception 'Gumboro should be due on day 14, got %', v_due;
+  end if;
+
+  perform public.add_poultry_batch_cost(v_batch.id, 'firewood', current_date, 500, 'Firewood', v_cash);
+  select * into v_summary from public.poultry_batch_summary where id = v_batch.id;
+  if v_summary.cost <> 2420 or v_summary.surplus <> -1420 then
+    raise exception 'Expected cost 2420 and surplus -1420 after firewood, got % / %', v_summary.cost, v_summary.surplus;
+  end if;
+  select coalesce(sum(debit), 0), coalesce(sum(credit), 0)
+  into v_debit, v_credit
+  from public.journal_lines jl
+  join public.journal_entries je on je.id = jl.journal_entry_id
+  where je.tenant_id = v_tenant;
+  if v_debit <> v_credit or v_debit <> 3420 then
+    raise exception 'Expected balanced journals of 3420 after firewood, got debit % credit %', v_debit, v_credit;
+  end if;
+
+  select id into v_task from public.poultry_batch_tasks where batch_id = v_batch.id and name = 'Newcastle';
+  perform public.complete_poultry_task(v_task, null, null);
+  if not exists (select 1 from public.poultry_batch_tasks where id = v_task and status = 'done') then
+    raise exception 'Newcastle task should be marked done';
   end if;
 
   begin
