@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { TbUserPlus } from "react-icons/tb";
 import { Button } from "@/components/ui/Button";
 import { Input, FieldError } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { StrengthMeter } from "@/components/ui/StrengthMeter";
@@ -24,6 +25,7 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<RegisterValues>({
@@ -35,6 +37,7 @@ export default function RegisterPage() {
       phone: "",
       email: "",
       associationName: "",
+      enterpriseKind: "sugarcane_association",
       password: "",
       confirmPassword: "",
       terms: false,
@@ -42,6 +45,8 @@ export default function RegisterPage() {
   });
 
   const password = watch("password");
+  const enterpriseKind = watch("enterpriseKind");
+  const isPoultry = enterpriseKind === "poultry_farm";
 
   const onSubmit = async (values: RegisterValues) => {
     setSubmitError(null);
@@ -59,7 +64,7 @@ export default function RegisterPage() {
   return (
     <div>
       <h1 className="font-display text-3xl font-bold text-ink-900">Create your account</h1>
-      <p className="mt-2 text-sm text-ink-500">Set up your association on RazFarm.</p>
+      <p className="mt-2 text-sm text-ink-500">Set up your association or broiler farm on RazFarm.</p>
 
       <form className="mt-8 space-y-5" onSubmit={handleSubmit(onSubmit)} noValidate>
         <div>
@@ -108,11 +113,23 @@ export default function RegisterPage() {
         </div>
 
         <div>
+          <label className="mb-1.5 block text-xs font-medium text-ink-700">What are you running?</label>
+          <Select
+            options={[
+              { value: "sugarcane_association", label: "Sugarcane association" },
+              { value: "poultry_farm", label: "Broiler farm" },
+            ]}
+            value={enterpriseKind}
+            onChange={(v) => setValue("enterpriseKind", v as "sugarcane_association" | "poultry_farm", { shouldValidate: true })}
+          />
+        </div>
+
+        <div>
           <label
             htmlFor="associationName"
             className="mb-1.5 block text-xs font-medium text-ink-700"
           >
-            Association name
+            {isPoultry ? "Farm name" : "Association name"}
           </label>
           <Input
             id="associationName"

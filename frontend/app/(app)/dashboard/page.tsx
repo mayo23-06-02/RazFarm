@@ -66,6 +66,9 @@ export default async function DashboardPage() {
   const tenantId = await getActiveTenantId();
   const supabase = await createClient();
 
+  const { data: kindRow } = await supabase.from("tenants").select("enterprise_kind").eq("id", tenantId).maybeSingle();
+  if (kindRow?.enterprise_kind === "poultry_farm") redirect("/poultry");
+
   const {
     data: { session },
   } = await supabase.auth.getSession();

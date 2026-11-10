@@ -33,7 +33,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   const { data: tenantRows } = await supabase
     .from("tenants")
-    .select("id, name")
+    .select("id, name, enterprise_kind")
     .in(
       "id",
       memberships.map((m) => m.tenantId)
@@ -41,7 +41,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   const tenants: (Tenant & { id: string })[] = memberships.map((m) => {
     const tenant = tenantRows?.find((t) => t.id === m.tenantId);
-    return { id: m.tenantId, name: tenant?.name ?? "Unknown association", role: labelRole(m.roles[0] ?? "member") };
+    return {
+      id: m.tenantId,
+      name: tenant?.name ?? "Unknown association",
+      role: labelRole(m.roles[0] ?? "member"),
+      enterpriseKind: tenant?.enterprise_kind ?? "sugarcane_association",
+    };
   });
 
   const cookieTenantId = (await cookies()).get(ACTIVE_TENANT_COOKIE_NAME)?.value ?? null;

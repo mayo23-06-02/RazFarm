@@ -47,7 +47,8 @@ export const registerSchema = z
     fullName: z.string().trim().min(2, "Enter your full name"),
     phone: phoneSchema,
     email: z.union([z.literal(""), z.email("Enter a valid email")]).optional(),
-    associationName: z.string().trim().min(2, "Enter your association name"),
+    associationName: z.string().trim().min(2, "Enter your association or farm name"),
+    enterpriseKind: z.enum(["sugarcane_association", "poultry_farm"]),
     password: passwordSchema,
     confirmPassword: z.string().min(1, "Confirm your password"),
     terms: z.boolean().refine((v) => v === true, {
