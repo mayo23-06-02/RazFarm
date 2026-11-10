@@ -29,6 +29,8 @@ declare
   v_due date;
   v_task uuid;
   v_task_count integer;
+  v_pen uuid;
+  v_pen_code text;
 begin
   insert into auth.users (
     instance_id, id, aud, role, email, encrypted_password,
@@ -164,6 +166,15 @@ begin
   perform public.complete_poultry_task(v_task, null, null);
   if not exists (select 1 from public.poultry_batch_tasks where id = v_task and status = 'done') then
     raise exception 'Newcastle task should be marked done';
+  end if;
+
+  insert into public.poultry_pens (tenant_id, house_id, code, name, capacity_birds)
+  values (v_tenant, v_house, 'A', 'Pen A', 200)
+  returning id into v_pen;
+  perform public.move_poultry_batch(v_batch.id, v_pen);
+  select pen_code into v_pen_code from public.poultry_batch_summary where id = v_batch.id;
+  if v_pen_code <> 'A' then
+    raise exception 'Expected the batch in pen A, got %', v_pen_code;
   end if;
 
   begin

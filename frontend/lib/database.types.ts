@@ -2228,6 +2228,10 @@ export interface Database {
         Args: { p_task_id: string; p_item_id?: string | null; p_quantity?: number | null };
         Returns: Database["public"]["Tables"]["poultry_batch_tasks"]["Row"];
       };
+      move_poultry_batch: {
+        Args: { p_batch_id: string; p_pen_id: string };
+        Returns: Database["public"]["Tables"]["poultry_batches"]["Row"];
+      };
     };
     Enums: {
       member_role: MemberRole;

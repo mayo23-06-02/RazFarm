@@ -26,6 +26,7 @@ type Log = Database["public"]["Tables"]["poultry_daily_logs"]["Row"];
 type Sale = Database["public"]["Tables"]["poultry_sales"]["Row"];
 type Task = Database["public"]["Tables"]["poultry_batch_tasks"]["Row"];
 type Vaccine = { id: string; name: string; unit: string; quantity_on_hand: number };
+type PenOption = { id: string; code: string; name: string; capacity_birds: number };
 
 const MANUAL_COSTS: { value: PoultryCostCategory; label: string }[] = [
   { value: "firewood", label: "Firewood" },
@@ -57,6 +58,7 @@ export function BatchDetailSection({
   accounts,
   tasks,
   vaccines,
+  pens,
   canManage,
 }: {
   batch: Summary;
@@ -65,6 +67,7 @@ export function BatchDetailSection({
   accounts: { id: string; code: string; name: string }[];
   tasks: Task[];
   vaccines: Vaccine[];
+  pens: PenOption[];
   canManage: boolean;
 }) {
   const router = useRouter();
@@ -84,6 +87,7 @@ export function BatchDetailSection({
   const [costDate, setCostDate] = useState(localISODate());
   const [costNote, setCostNote] = useState("Firewood");
   const [costAccountId, setCostAccountId] = useState(accounts.find((a) => a.code === "1010")?.id ?? accounts[0]?.id ?? "");
+  const [penId, setPenId] = useState(pens.find((p) => p.id !== batch.pen_id)?.id ?? pens[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -170,6 +174,27 @@ export function BatchDetailSection({
     router.refresh();
   };
 
+  const moveToPen = async () => {
+    setError(null);
+    if (!penId) {
+      setError("Choose a pen");
+      return;
+    }
+    setSaving(true);
+    const supabase = createClient();
+    const { error: rpcError } = await supabase.rpc("move_poultry_batch", {
+      p_batch_id: batch.id,
+      p_pen_id: penId,
+    });
+    setSaving(false);
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+    addToast({ variant: "field", message: "Batch moved" });
+    router.refresh();
+  };
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -180,6 +205,11 @@ export function BatchDetailSection({
           {batch.supplier_name ? ` · ${batch.supplier_name}` : ""}
         </span>
       </div>
+      {canManage && !closed && !batch.pen_id && batch.age_days >= 14 && pens.length > 0 && (
+        <p className="rounded-ctrl bg-harvest-50 px-3 py-2 text-sm text-harvest-500">
+          Day {batch.age_days}: these birds are still in the brooder. Move them into a pen below.
+        </p>
+      )}
 
       <KpiRow>
         <StatCard label="Alive" value={alive} />
@@ -221,6 +251,24 @@ export function BatchDetailSection({
           Daily log
         </Link>
       </div>
+
+      {canManage && !closed && pens.length > 0 && (
+        <Card title={batch.pen_id ? "Move pen" : "Move out of the brooder"}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <FormRow label="Pen" className="min-w-0 flex-1">
+              <Select
+                options={pens.map((p) => ({ value: p.id, label: `${p.code} · ${p.name} · ${p.capacity_birds} birds` }))}
+                value={penId}
+                onChange={setPenId}
+                placeholder="Choose a pen"
+              />
+            </FormRow>
+            <Button onClick={moveToPen} loading={saving} disabled={!penId || penId === batch.pen_id}>
+              Move
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <Card title="Vaccinations">
         <HealthTaskList tasks={tasks} vaccines={vaccines} canManage={canManage && !closed} />
