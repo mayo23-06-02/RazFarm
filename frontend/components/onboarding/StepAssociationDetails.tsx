@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { createClient } from "@/lib/supabase/client";
 import { slugify } from "@/lib/slug";
-import type { MillName } from "@/lib/database.types";
+import type { EnterpriseKind, MillName } from "@/lib/database.types";
 
 const MILL_OPTIONS: SelectOption[] = [
   { value: "ubombo", label: "Ubombo" },
@@ -22,9 +22,12 @@ const MILL_OPTIONS: SelectOption[] = [
 ];
 
 const schema = z.object({
+  enterpriseKind: z.enum(["sugarcane_association", "poultry_farm"], {
+    error: "Choose what you are setting up",
+  }),
   name: z
     .string()
-    .min(2, { error: "Enter the association's name" })
+    .min(2, { error: "Enter the name" })
     .max(120, { error: "Keep the name under 120 characters" })
     .trim(),
   slug: z
@@ -35,9 +38,7 @@ const schema = z.object({
       error: "Use lowercase letters, numbers and hyphens only",
     })
     .trim(),
-  mill: z.enum(["ubombo", "mhlume", "simunye", "other"], {
-    error: "Select a mill",
-  }),
+  mill: z.enum(["ubombo", "mhlume", "simunye", "other"]).optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -59,18 +60,25 @@ export function StepAssociationDetails({ onCreated }: StepAssociationDetailsProp
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", slug: "", mill: undefined },
+    defaultValues: { enterpriseKind: "sugarcane_association", name: "", slug: "", mill: undefined },
   });
 
   const mill = watch("mill");
+  const enterpriseKind = watch("enterpriseKind");
+  const isPoultry = enterpriseKind === "poultry_farm";
 
   const onSubmit = async (values: FormValues) => {
     setSubmitError(null);
+    if (!isPoultry && !values.mill) {
+      setSubmitError("Select a mill");
+      return;
+    }
     const supabase = createClient();
     const { data, error } = await supabase.rpc("register_association", {
       p_name: values.name,
       p_slug: values.slug,
-      p_mill: values.mill as MillName,
+      p_mill: (isPoultry ? "other" : values.mill) as MillName,
+      p_enterprise_kind: values.enterpriseKind as EnterpriseKind,
     });
 
     if (error) {
@@ -78,18 +86,32 @@ export function StepAssociationDetails({ onCreated }: StepAssociationDetailsProp
       return;
     }
 
-    addToast({ variant: "field", message: "Association created" });
+    await supabase.auth.refreshSession();
+    addToast({ variant: "field", message: isPoultry ? "Farm created" : "Association created" });
     onCreated(data as unknown as string);
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
       <div>
-        <h2 className="font-display text-[20px] font-semibold text-ink-900">Association details</h2>
+        <h2 className="font-display text-[20px] font-semibold text-ink-900">
+          {isPoultry ? "Farm details" : "Association details"}
+        </h2>
         <p className="mt-1 text-sm text-ink-500">Tell us who you&apos;re setting up.</p>
       </div>
 
-      <FormRow label="Association name" required error={errors.name?.message}>
+      <FormRow label="What are you running?" required>
+        <Select
+          options={[
+            { value: "sugarcane_association", label: "Sugarcane association" },
+            { value: "poultry_farm", label: "Broiler farm" },
+          ]}
+          value={enterpriseKind}
+          onChange={(v) => setValue("enterpriseKind", v as "sugarcane_association" | "poultry_farm", { shouldValidate: true })}
+        />
+      </FormRow>
+
+      <FormRow label={isPoultry ? "Farm name" : "Association name"} required error={errors.name?.message}>
         <Input
           placeholder="e.g. Lubombo Growers Association"
           error={!!errors.name}
@@ -118,15 +140,17 @@ export function StepAssociationDetails({ onCreated }: StepAssociationDetailsProp
         />
       </FormRow>
 
-      <FormRow label="Mill" required hint="Which mill does your association deliver to?" error={errors.mill?.message}>
-        <Select
-          options={MILL_OPTIONS}
-          value={mill}
-          onChange={(v) => setValue("mill", v as MillName, { shouldValidate: true })}
-          placeholder="Select a mill"
-          error={!!errors.mill}
-        />
-      </FormRow>
+      {!isPoultry && (
+        <FormRow label="Mill" required hint="Which mill does your association deliver to?" error={errors.mill?.message}>
+          <Select
+            options={MILL_OPTIONS}
+            value={mill}
+            onChange={(v) => setValue("mill", v as MillName, { shouldValidate: true })}
+            placeholder="Select a mill"
+            error={!!errors.mill}
+          />
+        </FormRow>
+      )}
 
       {submitError && <FieldError>{submitError}</FieldError>}
 

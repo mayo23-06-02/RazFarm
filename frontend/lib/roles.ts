@@ -42,3 +42,7 @@ export const STAFF_VIEWER_ROLES: MemberRole[] = ["chairman", "treasurer", "secre
 export const CONTRACTOR_VIEWER_ROLES: MemberRole[] = ["chairman", "treasurer", "secretary", "accountant", "supervisor"];
 export const CONTRACTOR_JOB_LOGGER_ROLES: MemberRole[] = ["chairman", "treasurer", "secretary", "supervisor"];
 export const BANK_DETAIL_REVEAL_ROLES: MemberRole[] = ["chairman", "treasurer", "accountant"];
+
+// Poultry (0019). Chairman is the registering owner of a one-person farm.
+export const POULTRY_VIEWER_ROLES: MemberRole[] = ["chairman", "treasurer", "accountant", "supervisor"];
+export const POULTRY_MANAGER_ROLES: MemberRole[] = ["chairman", "supervisor"];

@@ -30,6 +30,10 @@ const CATEGORY_LABEL: Record<InventoryItemCategory, string> = {
   equipment: "Equipment",
   vehicle: "Vehicle",
   plant_equipment: "Plant equipment",
+  feed: "Feed",
+  vaccine: "Vaccine",
+  medication: "Medication",
+  litter: "Litter",
   other: "Other",
 };
 

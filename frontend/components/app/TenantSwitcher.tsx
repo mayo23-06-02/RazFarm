@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 export interface Tenant {
   name: string;
   role: string;
+  enterpriseKind?: "sugarcane_association" | "poultry_farm" | "mixed";
 }
 
 export interface TenantSwitcherProps {

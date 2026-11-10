@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { decodeAccessTokenClaims, hasRole } from "@/lib/auth/claims";
 import type { MemberRole } from "@/lib/database.types";
+import { INVENTORY_MANAGER_ROLES, POULTRY_MANAGER_ROLES } from "@/lib/roles";
 
 // Same claim-decoding RoleGate uses, exposed as a plain boolean for pages
 // that need the answer inline (e.g. to decide a prop passed into a client
@@ -13,4 +14,18 @@ export async function hasTenantRole(tenantId: string, roles: MemberRole[]): Prom
   } = await supabase.auth.getSession();
   const claims = decodeAccessTokenClaims(session?.access_token);
   return hasRole(claims, tenantId, ...roles);
+}
+
+// Inventory screens stay accountant/supervisor for cane. On a poultry tenant
+// the chairman also adds feed items, hatcheries and receipts.
+export async function canManageStock(tenantId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const [{ data: tenant }, inventory, poultry] = await Promise.all([
+    supabase.from("tenants").select("enterprise_kind").eq("id", tenantId).maybeSingle(),
+    hasTenantRole(tenantId, INVENTORY_MANAGER_ROLES),
+    hasTenantRole(tenantId, POULTRY_MANAGER_ROLES),
+  ]);
+  const kind = tenant?.enterprise_kind;
+  const poultryTenant = kind === "poultry_farm" || kind === "mixed";
+  return inventory || (poultryTenant && poultry);
 }

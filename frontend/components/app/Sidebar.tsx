@@ -5,6 +5,7 @@ import {
   TbBuildingFactory2,
   TbCalendarEvent,
   TbCash,
+  TbEgg,
   TbFolder,
   TbLayoutDashboard,
   TbPackage,
@@ -25,45 +26,51 @@ interface NavGroup {
   items: { icon: React.ReactNode; label: string; href?: string; badge?: number; active?: boolean }[];
 }
 
-const NAV_GROUPS: NavGroup[] = [
-  {
-    label: "General",
-    items: [{ icon: <TbLayoutDashboard />, label: "Dashboard", href: "/dashboard" }],
-  },
-  {
-    label: "Production",
-    items: [
-      { icon: <TbPlant2 />, label: "Fields", href: "/fields" },
-      { icon: <TbTruck />, label: "Deliveries", href: "/mill/deliveries" },
-      { icon: <TbBuildingFactory2 />, label: "Mill", href: "/mill" },
-    ],
-  },
-  {
-    label: "Finance",
-    items: [{ icon: <TbCash />, label: "Finances", href: "/finance/accounts" }],
-  },
-  {
-    label: "Staff",
-    items: [{ icon: <TbUserCog />, label: "Employees & contractors", href: "/staff" }],
-  },
-  {
-    label: "Inventory",
-    items: [{ icon: <TbPackage />, label: "Inventory", href: "/inventory/items" }],
-  },
-  {
-    label: "Association",
-    items: [
-      { icon: <TbUsers />, label: "Members", href: "/members" },
-      { icon: <TbCalendarEvent />, label: "Meetings", href: "/meetings" },
-      { icon: <TbSpeakerphone />, label: "Announcements", href: "/announcements" },
-      { icon: <TbFolder />, label: "Documents", href: "/documents" },
-    ],
-  },
-  {
-    label: "Admin",
-    items: [{ icon: <TbSettings />, label: "Settings" }],
-  },
-];
+function navGroups(kind: Tenant["enterpriseKind"]): NavGroup[] {
+  const poultry = kind === "poultry_farm" || kind === "mixed";
+  const cane = kind !== "poultry_farm";
+  const groups: NavGroup[] = [
+    {
+      label: "General",
+      items: [{ icon: <TbLayoutDashboard />, label: "Dashboard", href: "/dashboard" }],
+    },
+  ];
+
+  const production = [
+    ...(cane
+      ? [
+          { icon: <TbPlant2 />, label: "Fields", href: "/fields" },
+          { icon: <TbTruck />, label: "Deliveries", href: "/mill/deliveries" },
+          { icon: <TbBuildingFactory2 />, label: "Mill", href: "/mill" },
+        ]
+      : []),
+    ...(poultry ? [{ icon: <TbEgg />, label: "Poultry", href: "/poultry" }] : []),
+  ];
+  if (production.length > 0) groups.push({ label: "Production", items: production });
+
+  groups.push(
+    { label: "Finance", items: [{ icon: <TbCash />, label: "Finances", href: "/finance/accounts" }] },
+    { label: "Staff", items: [{ icon: <TbUserCog />, label: "Employees & contractors", href: "/staff" }] },
+    { label: "Inventory", items: [{ icon: <TbPackage />, label: "Inventory", href: "/inventory/items" }] }
+  );
+
+  if (cane) {
+    groups.push(
+      {
+        label: "Association",
+        items: [
+          { icon: <TbUsers />, label: "Members", href: "/members" },
+          { icon: <TbCalendarEvent />, label: "Meetings", href: "/meetings" },
+          { icon: <TbSpeakerphone />, label: "Announcements", href: "/announcements" },
+          { icon: <TbFolder />, label: "Documents", href: "/documents" },
+        ],
+      },
+      { label: "Admin", items: [{ icon: <TbSettings />, label: "Settings" }] }
+    );
+  }
+
+  return groups;
+}
 
 const DEMO_TENANTS: Tenant[] = [
   { name: "Ka-Lavumisa Growers", role: "Chairman" },
@@ -79,7 +86,8 @@ export interface SidebarProps {
 export function Sidebar({ className, tenants = DEMO_TENANTS, activeTenant = DEMO_TENANTS[0] }: SidebarProps) {
   const pathname = usePathname();
 
-  const bestMatchHref = NAV_GROUPS.flatMap((group) => group.items)
+  const groups = navGroups(activeTenant.enterpriseKind);
+  const bestMatchHref = groups.flatMap((group) => group.items)
     .map((item) => item.href)
     .filter((href): href is string => !!href && (pathname === href || pathname.startsWith(`${href}/`)))
     .sort((a, b) => b.length - a.length)[0];
@@ -93,7 +101,7 @@ export function Sidebar({ className, tenants = DEMO_TENANTS, activeTenant = DEMO
         <span className="font-display text-base font-semibold text-ink-900">RazFarm</span>
       </div>
       <nav className="flex-1 space-y-5 overflow-y-auto px-3">
-        {NAV_GROUPS.map((group) => (
+        {groups.map((group) => (
           <div key={group.label} className="space-y-1">
             <SectionHeading className="mb-2 px-3">{group.label}</SectionHeading>
             {group.items.map((item) => {

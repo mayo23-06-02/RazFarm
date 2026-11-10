@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { StepAssociationDetails } from "./StepAssociationDetails";
 
 const STEPS: StepperStep[] = [
-  { label: "Association details", description: "Name, slug and mill" },
+  { label: "Farm details", description: "Name, type and mill" },
   { label: "Season & settings", description: "Season dates, VAT, logo" },
   { label: "Invite your committee", description: "Optional — skip anytime" },
 ];

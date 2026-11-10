@@ -21,6 +21,10 @@ const CATEGORY_OPTIONS = [
   { value: "equipment", label: "Equipment" },
   { value: "vehicle", label: "Vehicle" },
   { value: "plant_equipment", label: "Plant equipment" },
+  { value: "feed", label: "Feed" },
+  { value: "vaccine", label: "Vaccine" },
+  { value: "medication", label: "Medication" },
+  { value: "litter", label: "Litter" },
   { value: "other", label: "Other" },
 ];
 
@@ -66,6 +70,7 @@ export function ItemFormDrawer({ tenantId, open, onOpenChange, item, suppliers, 
   const [purchaseDate, setPurchaseDate] = useState<Date | undefined>(undefined);
   const [condition, setCondition] = useState<InventoryItemCondition | "">("");
   const [isActive, setIsActive] = useState(true);
+  const [unitWeightKg, setUnitWeightKg] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -86,6 +91,7 @@ export function ItemFormDrawer({ tenantId, open, onOpenChange, item, suppliers, 
     setPurchaseDate(item?.purchase_date ? new Date(item.purchase_date) : undefined);
     setCondition(item?.condition ?? "");
     setIsActive(item?.is_active ?? true);
+    setUnitWeightKg(item?.unit_weight_kg != null ? String(item.unit_weight_kg) : "");
     setError(null);
   }, [open, item]);
 
@@ -111,6 +117,7 @@ export function ItemFormDrawer({ tenantId, open, onOpenChange, item, suppliers, 
       purchase_date: purchaseDate ? purchaseDate.toISOString().slice(0, 10) : null,
       condition: condition || null,
       is_active: isActive,
+      unit_weight_kg: unitWeightKg.trim() ? Number(unitWeightKg) : null,
     };
 
     const { error: saveError } = isEdit
@@ -142,6 +149,9 @@ export function ItemFormDrawer({ tenantId, open, onOpenChange, item, suppliers, 
         </FormRow>
         <FormRow label="Unit" required hint="What quantity is measured in">
           <Select options={UNIT_OPTIONS} value={unit} onChange={setUnit} />
+        </FormRow>
+        <FormRow label="Kg per unit" hint="For a 50 kg feed bag, enter 50. Used to turn bags into kilograms.">
+          <Input type="number" step="0.001" value={unitWeightKg} onChange={(e) => setUnitWeightKg(e.target.value)} placeholder="50" />
         </FormRow>
         <FormRow label="Reorder level" hint="Get an alert when stock on hand falls to or below this">
           <Input type="number" step="0.01" value={reorderLevel} onChange={(e) => setReorderLevel(e.target.value)} />

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { isEmail, normalizePhone } from "@/lib/validators/auth";
 import { slugify } from "@/lib/slug";
-import type { MillName } from "@/lib/database.types";
+import type { EnterpriseKind, MillName } from "@/lib/database.types";
 
 export class AuthApiError extends Error {
   constructor(message: string) {
@@ -59,6 +59,7 @@ export interface RegisterInput {
   phone: string;
   email?: string;
   associationName: string;
+  enterpriseKind: EnterpriseKind;
   password: string;
 }
 
@@ -77,6 +78,7 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
       data: {
         full_name: input.fullName,
         association_name: input.associationName,
+        enterprise_kind: input.enterpriseKind,
         // TODO: email is stored as metadata only until a verified-email
         // flow (supabase.auth.updateUser({ email })) is wired up — phone
         // is the primary, verified identity for this signUp call.
@@ -102,6 +104,8 @@ export async function completeRegistration(): Promise<CompleteRegistrationResult
     data: { user },
   } = await supabase.auth.getUser();
   const associationName = (user?.user_metadata?.association_name as string | undefined)?.trim();
+  const enterpriseKind: EnterpriseKind =
+    user?.user_metadata?.enterprise_kind === "poultry_farm" ? "poultry_farm" : "sugarcane_association";
 
   if (!associationName) {
     throw new AuthApiError("We couldn't find your association name. Please contact support.");
@@ -116,6 +120,7 @@ export async function completeRegistration(): Promise<CompleteRegistrationResult
       p_name: associationName,
       p_slug: slug,
       p_mill: "other" as MillName,
+      p_enterprise_kind: enterpriseKind,
     });
     if (!error) {
       await supabase.auth.refreshSession();

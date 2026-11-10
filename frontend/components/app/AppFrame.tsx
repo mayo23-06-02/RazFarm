@@ -23,6 +23,13 @@ const SEGMENT_LABELS: Record<string, string> = {
   mill: "Mill",
   deliveries: "Deliveries",
   quality: "Sucrose trends",
+  poultry: "Poultry",
+  today: "Today",
+  houses: "Houses",
+  batches: "Batch",
+  finance: "Finances",
+  inventory: "Inventory",
+  staff: "Staff",
 };
 
 // Detail-page segments (uuids) don't have a human label available at this
